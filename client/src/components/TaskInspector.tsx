@@ -308,14 +308,14 @@ export function TaskInspector({
           <span>Created</span>
           <span>
             {formatDate(task.createdAt)}
-            {task.createdBy && ` by ${task.createdBy.username}`}
+            {task.createdBy && ` by ${task.createdBy.name ?? task.createdBy.username}`}
           </span>
         </div>
         <div className="flex justify-between" style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
           <span>Completed</span>
           <span>
             {task.completedAt ? formatDate(task.completedAt, true) : "—"}
-            {task.completedAt && task.completedBy && ` by ${task.completedBy.username}`}
+            {task.completedAt && task.completedBy && ` by ${task.completedBy.name ?? task.completedBy.username}`}
           </span>
         </div>
         {canEdit && (

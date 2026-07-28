@@ -316,6 +316,89 @@ export function Button({
   );
 }
 
+function EyeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.86 19.86 0 0 1 4.22-5.53M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.86 19.86 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
+/** Labeled input with an optional password-reveal toggle. Used by AuthScreen and ProfileDialog. */
+export function TextField({
+  label,
+  type,
+  value,
+  onChange,
+  onEnter,
+  autoFocus,
+  autoComplete,
+}: {
+  label: string;
+  type: "text" | "password";
+  value: string;
+  onChange: (v: string) => void;
+  onEnter: () => void;
+  autoFocus?: boolean;
+  autoComplete?: string;
+}) {
+  const [reveal, setReveal] = useState(false);
+  const isPassword = type === "password";
+
+  function handleKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") onEnter();
+  }
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--weight-medium)", color: "var(--text-secondary)" }}>
+        {label}
+      </span>
+      <div className="relative">
+        <input
+          type={isPassword && reveal ? "text" : type}
+          value={value}
+          autoFocus={autoFocus}
+          autoComplete={autoComplete ?? (type === "password" ? "current-password" : "username")}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKey}
+          className="h-9 w-full border-none outline-none"
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-sm)",
+            color: "var(--text-primary)",
+            background: "var(--surface-sunken)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-sm)",
+            padding: isPassword ? "0 34px 0 12px" : "0 12px",
+          }}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            tabIndex={-1}
+            title={reveal ? "Hide password" : "Show password"}
+            onClick={() => setReveal((v) => !v)}
+            className="absolute inset-y-0 right-0 flex cursor-pointer items-center border-none bg-transparent px-2.5"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {reveal ? <EyeOffIcon /> : <EyeIcon />}
+          </button>
+        )}
+      </div>
+    </label>
+  );
+}
+
 export function InlineInput({
   defaultValue,
   placeholder,

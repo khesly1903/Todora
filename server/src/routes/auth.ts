@@ -10,6 +10,19 @@ const credentialsSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
+const registerSchema = credentialsSchema.extend({
+  name: z.string().trim().min(1).max(50),
+});
+
+const updateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(1).max(200),
+});
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: "lax" as const,
@@ -21,8 +34,8 @@ const COOKIE_OPTIONS = {
 
 authRouter.post("/register", async (req, res, next) => {
   try {
-    const { username, password } = credentialsSchema.parse(req.body);
-    const user = await authService.register(username, password);
+    const { username, password, name } = registerSchema.parse(req.body);
+    const user = await authService.register(username, password, name);
     const token = authService.signToken(user.id);
     res.cookie(AUTH_COOKIE, token, COOKIE_OPTIONS);
     res.status(201).json(user);
@@ -56,6 +69,25 @@ authRouter.get("/me", requireAuth, async (req, res, next) => {
       return;
     }
     res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+authRouter.patch("/me", requireAuth, async (req, res, next) => {
+  try {
+    const { name } = updateProfileSchema.parse(req.body);
+    res.json(await authService.updateProfile(req.userId!, name));
+  } catch (err) {
+    next(err);
+  }
+});
+
+authRouter.post("/change-password", requireAuth, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+    await authService.changePassword(req.userId!, currentPassword, newPassword);
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

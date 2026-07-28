@@ -6,6 +6,7 @@ export type InvitationStatus = "PENDING" | "APPROVED" | "REJECTED";
 export interface User {
   id: string;
   username: string;
+  name: string | null;
 }
 
 export interface Workspace {
@@ -13,6 +14,7 @@ export interface Workspace {
   name: string;
   ownerId: string;
   ownerUsername: string;
+  ownerName: string | null;
   role: WorkspaceRole;
   createdAt: string;
   updatedAt: string;
@@ -38,7 +40,7 @@ export interface Invitation {
   createdAt: string;
   updatedAt: string;
   workspace?: { name: string };
-  invitedBy?: { username: string };
+  invitedBy?: { username: string; name: string | null };
   invitedUser?: User;
 }
 

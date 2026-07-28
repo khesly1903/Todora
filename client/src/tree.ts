@@ -15,6 +15,15 @@ export function buildTree(areas: Area[]): AreaNode[] {
   return roots;
 }
 
+/** Splits a task list into open tasks and DONE tasks, the latter sorted by completedAt descending. */
+export function splitActiveAndCompleted(tasks: Task[]): { active: Task[]; completed: Task[] } {
+  const active = tasks.filter((t) => t.status !== "DONE");
+  const completed = [...tasks.filter((t) => t.status === "DONE")].sort((a, b) =>
+    (b.completedAt ?? "").localeCompare(a.completedAt ?? ""),
+  );
+  return { active, completed };
+}
+
 export function groupTasksByArea(tasks: Task[]): Map<string, Task[]> {
   const byArea = new Map<string, Task[]>();
   for (const task of tasks) {

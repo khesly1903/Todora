@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "dotenv -e ../.env -- tsx watch src/index.ts",
+    "build": "prisma generate && tsc",
+    "start": "prisma migrate deploy && node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

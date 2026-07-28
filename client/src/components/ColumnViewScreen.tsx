@@ -20,8 +20,8 @@ import {
 } from "../hooks";
 import { useUndo } from "../undo";
 import { resolveDragEnd } from "../dnd";
-import { buildTree, deletionImpact, findPath, groupTasksByArea, type AreaNode } from "../tree";
-import { AddAreaRow, AddTaskRow, AreaColumnItem, Column, TaskColumnItem } from "./ColumnView";
+import { buildTree, deletionImpact, findPath, groupTasksByArea, splitActiveAndCompleted, type AreaNode } from "../tree";
+import { AddAreaRow, AddTaskRow, AreaColumnItem, Column, TaskColumnList } from "./ColumnView";
 import { Breadcrumb } from "./primitives";
 import { DeleteConfirmDialog } from "./Dialog";
 import { TaskInspector } from "./TaskInspector";
@@ -235,10 +235,11 @@ export function ColumnViewScreen({
         {visibleColumns.map((col, i) => {
           const depth = startIdx + i;
           const isEmptyRoot = col.parent === null && col.areas.length === 0;
+          const { active: activeTasks } = splitActiveAndCompleted(col.tasks);
           return (
             <Column key={col.parent?.id ?? "root"}>
               <SortableContext
-                items={[...col.areas.map((a) => a.id), ...col.tasks.map((t) => t.id)]}
+                items={[...col.areas.map((a) => a.id), ...activeTasks.map((t) => t.id)]}
                 strategy={verticalListSortingStrategy}
               >
                 {col.areas.map((node) => (
@@ -256,24 +257,21 @@ export function ColumnViewScreen({
                     onDelete={() => setDeleteTarget(node)}
                   />
                 ))}
-                {col.tasks.map((task) => (
-                  <TaskColumnItem
-                    key={task.id}
-                    task={task}
-                    selected={selectedTaskId === task.id}
-                    editing={editingTaskId === task.id}
-                    canEdit={canEdit}
-                    onSelect={() => setSelectedTaskId(task.id)}
-                    onCycleStatus={() => cycleStatus.mutate({ task })}
-                    onStartEdit={() => setEditingTaskId(task.id)}
-                    onSubmitEdit={(title) => submitTaskRename(task, title)}
-                    onCancelEdit={() => setEditingTaskId(null)}
-                    onDelete={() => {
-                      undo.deleteTask(task);
-                      if (selectedTaskId === task.id) setSelectedTaskId(null);
-                    }}
-                  />
-                ))}
+                <TaskColumnList
+                  tasks={col.tasks}
+                  selectedTaskId={selectedTaskId}
+                  editingTaskId={editingTaskId}
+                  canEdit={canEdit}
+                  onSelect={(task) => setSelectedTaskId(task.id)}
+                  onCycleStatus={(task) => cycleStatus.mutate({ task })}
+                  onStartEdit={(task) => setEditingTaskId(task.id)}
+                  onSubmitEdit={(task, title) => submitTaskRename(task, title)}
+                  onCancelEdit={() => setEditingTaskId(null)}
+                  onDelete={(task) => {
+                    undo.deleteTask(task);
+                    if (selectedTaskId === task.id) setSelectedTaskId(null);
+                  }}
+                />
               </SortableContext>
               {isEmptyRoot && (
                 <div className="px-2 py-2" style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>

@@ -17,9 +17,15 @@ export class ApiError extends Error {
   }
 }
 
+// In dev, requests stay relative and Vite proxies /api to the local server.
+// In prod, the client and server are typically on different subdomains, so
+// VITE_API_URL (baked in at build time) points requests at the real API host.
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     ...init,
   });
   if (!res.ok) {
@@ -55,12 +61,19 @@ export interface ExportNode {
 }
 
 export const api = {
-  register: (username: string, password: string) =>
-    request<User>("/api/auth/register", { method: "POST", body: JSON.stringify({ username, password }) }),
+  register: (username: string, password: string, name: string) =>
+    request<User>("/api/auth/register", { method: "POST", body: JSON.stringify({ username, password, name }) }),
   login: (username: string, password: string) =>
     request<User>("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
   me: () => request<User>("/api/auth/me"),
+  updateProfile: (name: string) =>
+    request<User>("/api/auth/me", { method: "PATCH", body: JSON.stringify({ name }) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
 
   listWorkspaces: () => request<Workspace[]>("/api/workspaces"),
   createWorkspace: (input: { name: string }) =>

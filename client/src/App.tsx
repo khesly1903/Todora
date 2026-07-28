@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { useAreas, useCreateArea, useImportTree, useTasks, useWorkspaces } from "./hooks";
 import { useAuth } from "./auth";
 import { TreeView } from "./components/TreeView";
@@ -6,12 +7,14 @@ import { ColumnViewScreen } from "./components/ColumnViewScreen";
 import { CalendarView } from "./components/CalendarView";
 import { CommandPalette, type Command } from "./components/CommandPalette";
 import { ShortcutsHelp } from "./components/ShortcutsHelp";
+import { ProfileDialog } from "./components/ProfileDialog";
 import { WorkspaceSwitcher } from "./components/WorkspaceSwitcher";
 import { NotificationsBell } from "./components/NotificationsBell";
 import { AuthScreen } from "./components/AuthScreen";
 import { IconButton, Logo, MoonIcon, SearchIcon, SunIcon } from "./components/primitives";
 import { buildExport, downloadJson, pickJsonFile } from "./backup";
 import { pushToast } from "./toast";
+import { LandingPage } from "./landing/LandingPage";
 import type { ExportNode } from "./api";
 import type { Task } from "./types";
 import { canEditRole } from "./types";
@@ -54,7 +57,15 @@ function useCurrentWorkspaceId() {
   return [id, setId] as const;
 }
 
-function UserMenu({ username, onLogout }: { username: string; onLogout: () => void }) {
+function UserMenu({
+  label,
+  onEditProfile,
+  onLogout,
+}: {
+  label: string;
+  onEditProfile: () => void;
+  onLogout: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -72,7 +83,7 @@ function UserMenu({ username, onLogout }: { username: string; onLogout: () => vo
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        title={username}
+        title={label}
         className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center border-none"
         style={{
           fontSize: "var(--text-2xs)",
@@ -82,7 +93,7 @@ function UserMenu({ username, onLogout }: { username: string; onLogout: () => vo
           borderRadius: "var(--radius-full)",
         }}
       >
-        {username.slice(0, 1).toUpperCase()}
+        {label.slice(0, 1).toUpperCase()}
       </button>
       {open && (
         <div
@@ -94,10 +105,23 @@ function UserMenu({ username, onLogout }: { username: string; onLogout: () => vo
             boxShadow: "var(--shadow-lg)",
           }}
         >
-          <div className="px-2 py-1.5" style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--text-primary)" }}>
-            {username}
+          <div className="truncate px-2 py-1.5" style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--text-primary)" }}>
+            {label}
           </div>
           <div className="my-1" style={{ borderTop: "1px solid var(--border-subtle)" }} />
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onEditProfile();
+            }}
+            className="flex w-full cursor-pointer items-center border-none bg-transparent px-2 py-1.5 text-left"
+            style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)", borderRadius: "var(--radius-sm)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-sunken)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            Edit profile
+          </button>
           <button
             type="button"
             onClick={onLogout}
@@ -156,6 +180,10 @@ function AuthedApp() {
 
   const workspaces = useMemo(() => workspacesQuery.data ?? [], [workspacesQuery.data]);
 
+  useEffect(() => {
+    document.title = "Todora";
+  }, []);
+
   // Resolve the active workspace once the list loads: keep the persisted one if it
   // still exists, otherwise fall back to the first workspace.
   useEffect(() => {
@@ -175,6 +203,7 @@ function AuthedApp() {
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
 
   const areas = areasQuery.data ?? [];
@@ -319,7 +348,13 @@ function AuthedApp() {
             title="Toggle theme"
           />
           <NotificationsBell />
-          {user && <UserMenu username={user.username} onLogout={logout} />}
+          {user && (
+            <UserMenu
+              label={user.name ?? user.username}
+              onEditProfile={() => setProfileOpen(true)}
+              onLogout={logout}
+            />
+          )}
         </div>
       </header>
 
@@ -365,22 +400,72 @@ function AuthedApp() {
       />
 
       <ShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      {profileOpen && <ProfileDialog onClose={() => setProfileOpen(false)} />}
     </div>
   );
 }
 
-export default function App() {
+function LoadingScreen() {
+  return (
+    <div className="flex h-full w-full items-center justify-center" style={{ background: "var(--surface-content)" }}>
+      <div style={{ color: "var(--text-tertiary)" }}>Loading…</div>
+    </div>
+  );
+}
+
+/** Wraps a route that requires a signed-in user; bounces to /login otherwise. */
+function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
 
-  if (loading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center" style={{ background: "var(--surface-content)" }}>
-        <div style={{ color: "var(--text-tertiary)" }}>Loading…</div>
-      </div>
-    );
-  }
+/** Wraps a public route (landing, login, signup); bounces signed-in users straight to /app. */
+function RedirectIfAuthed({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (user) return <Navigate to="/app" replace />;
+  return children;
+}
 
-  if (!user) return <AuthScreen />;
-
-  return <AuthedApp />;
+export default function App() {
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <RedirectIfAuthed>
+            <LandingPage />
+          </RedirectIfAuthed>
+        }
+      />
+      <Route path="/home" element={<LandingPage />} />
+      <Route
+        path="/login"
+        element={
+          <RedirectIfAuthed>
+            <AuthScreen initialMode="login" />
+          </RedirectIfAuthed>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <RedirectIfAuthed>
+            <AuthScreen initialMode="register" />
+          </RedirectIfAuthed>
+        }
+      />
+      <Route
+        path="/app"
+        element={
+          <RequireAuth>
+            <AuthedApp />
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }

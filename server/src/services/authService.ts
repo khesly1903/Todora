@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db.js";
-import { isValidPassword, isValidUsername } from "./authValidation.js";
+import { isValidName, isValidPassword, isValidUsername } from "./authValidation.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is required");
@@ -33,6 +33,18 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
+export class InvalidNameError extends Error {
+  constructor() {
+    super("Name must be 1-50 characters (letters, spaces, hyphens, apostrophes)");
+  }
+}
+
+export class IncorrectPasswordError extends Error {
+  constructor() {
+    super("Current password is incorrect");
+  }
+}
+
 export function signToken(userId: string): string {
   return jwt.sign({ sub: userId }, JWT_SECRET!, { expiresIn: TOKEN_TTL });
 }
@@ -46,10 +58,15 @@ export function verifyToken(token: string): string | null {
   }
 }
 
+function toPublicUser(user: { id: string; username: string; name: string | null }) {
+  return { id: user.id, username: user.username, name: user.name };
+}
+
 /** Creates a user plus a personal workspace they own and belong to as OWNER. */
-export async function register(username: string, password: string) {
+export async function register(username: string, password: string, name: string) {
   if (!isValidUsername(username)) throw new InvalidUsernameError();
   if (!isValidPassword(password)) throw new WeakPasswordError();
+  if (!isValidName(name)) throw new InvalidNameError();
 
   const existing = await prisma.user.findUnique({ where: { username } });
   if (existing) throw new UsernameTakenError();
@@ -57,7 +74,7 @@ export async function register(username: string, password: string) {
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
 
   const user = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({ data: { username, passwordHash } });
+    const created = await tx.user.create({ data: { username, name: name.trim(), passwordHash } });
     const workspace = await tx.workspace.create({
       data: { name: "My Workspace", ownerId: created.id },
     });
@@ -67,7 +84,7 @@ export async function register(username: string, password: string) {
     return created;
   });
 
-  return { id: user.id, username: user.username };
+  return toPublicUser(user);
 }
 
 export async function login(username: string, password: string) {
@@ -75,10 +92,26 @@ export async function login(username: string, password: string) {
   if (!user) throw new InvalidCredentialsError();
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) throw new InvalidCredentialsError();
-  return { id: user.id, username: user.username };
+  return toPublicUser(user);
 }
 
 export async function getUserById(id: string) {
   const user = await prisma.user.findUnique({ where: { id } });
-  return user ? { id: user.id, username: user.username } : null;
+  return user ? toPublicUser(user) : null;
+}
+
+export async function updateProfile(userId: string, name: string) {
+  if (!isValidName(name)) throw new InvalidNameError();
+  const user = await prisma.user.update({ where: { id: userId }, data: { name: name.trim() } });
+  return toPublicUser(user);
+}
+
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new InvalidCredentialsError();
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) throw new IncorrectPasswordError();
+  if (!isValidPassword(newPassword)) throw new WeakPasswordError();
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 }

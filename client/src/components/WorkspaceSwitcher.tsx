@@ -225,7 +225,7 @@ export function WorkspaceSwitcher({
                     <span
                       className="shrink-0"
                       style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}
-                      title={`Shared by ${ws.ownerUsername}`}
+                      title={`Shared by ${ws.ownerName ?? ws.ownerUsername}`}
                     >
                       {ROLE_BADGE_LABEL[ws.role]}
                     </span>

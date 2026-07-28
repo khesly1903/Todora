@@ -98,7 +98,7 @@ export function NotificationsBell() {
                   style={{ background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)" }}
                 >
                   <div style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)" }}>
-                    <strong>{inv.invitedBy?.username}</strong> invited you to{" "}
+                    <strong>{inv.invitedBy?.name ?? inv.invitedBy?.username}</strong> invited you to{" "}
                     <strong>{inv.workspace?.name}</strong>
                   </div>
                   <div className="flex gap-1.5">

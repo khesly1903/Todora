@@ -372,4 +372,12 @@ export function useUpdateMemberRole(workspaceId: string) {
   });
 }
 
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
+      api.changePassword(input.currentPassword, input.newPassword),
+    meta: { silent: true },
+  });
+}
+
 export type { Workspace };

@@ -4,7 +4,7 @@ import { completedAtFor, completedByFor } from "./hierarchy.js";
 import { assertEditor, assertMember, workspaceIdForArea, workspaceIdForTask } from "./accessService.js";
 import { CrossWorkspaceError } from "./areaService.js";
 
-const USER_SELECT = { select: { id: true, username: true } };
+const USER_SELECT = { select: { id: true, username: true, name: true } };
 const TASK_INCLUDE = { createdBy: USER_SELECT, completedBy: USER_SELECT };
 
 export async function listTasks(userId: string, workspaceId: string) {

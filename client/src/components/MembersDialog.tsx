@@ -124,7 +124,7 @@ export function MembersDialog({
             {members.map((m) => (
               <div key={m.id} className="flex items-center gap-2 py-1">
                 <span className="min-w-0 flex-1 truncate" style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)" }}>
-                  {m.user.username}
+                  {m.user.name ?? m.user.username}
                 </span>
                 {m.role === "OWNER" ? (
                   <span style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>Owner</span>
@@ -155,7 +155,7 @@ export function MembersDialog({
                 {pendingInvitations.map((inv) => (
                   <div key={inv.id} className="flex items-center gap-2 py-1">
                     <span className="min-w-0 flex-1 truncate" style={{ fontSize: "var(--text-sm)", color: "var(--text-secondary)" }}>
-                      {inv.invitedUser?.username}
+                      {inv.invitedUser?.name ?? inv.invitedUser?.username}
                     </span>
                     <span style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>{ROLE_LABELS[inv.role]}</span>
                     <button

@@ -14,7 +14,9 @@ import { CrossWorkspaceError, CycleError } from "./services/areaService.js";
 import { LastWorkspaceError } from "./services/workspaceService.js";
 import { NotAuthorizedError } from "./services/accessService.js";
 import {
+  IncorrectPasswordError,
   InvalidCredentialsError,
+  InvalidNameError,
   InvalidUsernameError,
   UsernameTakenError,
   WeakPasswordError,
@@ -66,11 +68,12 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (
     err instanceof UsernameTakenError ||
     err instanceof InvalidUsernameError ||
-    err instanceof WeakPasswordError
+    err instanceof WeakPasswordError ||
+    err instanceof InvalidNameError
   ) {
     return res.status(400).json({ error: err.message });
   }
-  if (err instanceof InvalidCredentialsError) {
+  if (err instanceof InvalidCredentialsError || err instanceof IncorrectPasswordError) {
     return res.status(401).json({ error: err.message });
   }
   if (err instanceof NotAuthorizedError) {

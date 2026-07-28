@@ -1,123 +1,53 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
-import { Button, Logo } from "./primitives";
+import { Button, Logo, TextField } from "./primitives";
 
 type Mode = "login" | "register";
 
-function EyeIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.86 19.86 0 0 1 4.22-5.53M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.86 19.86 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  );
-}
-
-function TextField({
-  label,
-  type,
-  value,
-  onChange,
-  onEnter,
-  autoFocus,
-  autoComplete,
-}: {
-  label: string;
-  type: "text" | "password";
-  value: string;
-  onChange: (v: string) => void;
-  onEnter: () => void;
-  autoFocus?: boolean;
-  autoComplete?: string;
-}) {
-  const [reveal, setReveal] = useState(false);
-  const isPassword = type === "password";
-
-  function handleKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") onEnter();
-  }
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--weight-medium)", color: "var(--text-secondary)" }}>
-        {label}
-      </span>
-      <div className="relative">
-        <input
-          type={isPassword && reveal ? "text" : type}
-          value={value}
-          autoFocus={autoFocus}
-          autoComplete={autoComplete ?? (type === "password" ? "current-password" : "username")}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKey}
-          className="h-9 w-full border-none outline-none"
-          style={{
-            fontFamily: "var(--font-sans)",
-            fontSize: "var(--text-sm)",
-            color: "var(--text-primary)",
-            background: "var(--surface-sunken)",
-            border: "1px solid var(--border-default)",
-            borderRadius: "var(--radius-sm)",
-            padding: isPassword ? "0 34px 0 12px" : "0 12px",
-          }}
-        />
-        {isPassword && (
-          <button
-            type="button"
-            tabIndex={-1}
-            title={reveal ? "Hide password" : "Show password"}
-            onClick={() => setReveal((v) => !v)}
-            className="absolute inset-y-0 right-0 flex cursor-pointer items-center border-none bg-transparent px-2.5"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {reveal ? <EyeOffIcon /> : <EyeIcon />}
-          </button>
-        )}
-      </div>
-    </label>
-  );
-}
-
 /** Full-screen gate shown when no user is signed in. No external site — the app owns login. */
 const PASSWORD_PATTERN = /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$/;
+const NAME_PATTERN = /^[\p{L}\p{M} .'-]{1,50}$/u;
 
-export function AuthScreen() {
+export function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const { login, register, authError, clearAuthError } = useAuth();
-  const initialMode: Mode = new URLSearchParams(window.location.search).get("mode") === "register" ? "register" : "login";
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const navigate = useNavigate();
+  const mode = initialMode;
+  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    document.title = mode === "login" ? "Login · Todora" : "Create account · Todora";
+  }, [mode]);
+
   function switchMode(next: Mode) {
-    setMode(next);
+    setName("");
     setUsername("");
     setPassword("");
     setConfirmPassword("");
     clearAuthError();
+    navigate(next === "login" ? "/login" : "/signup");
   }
 
   const isRegister = mode === "register";
+  const nameValid = !isRegister || NAME_PATTERN.test(name.trim());
   const passwordMeetsPolicy = !isRegister || PASSWORD_PATTERN.test(password);
   const passwordsMatch = !isRegister || password === confirmPassword;
   const canSubmit =
-    !submitting && !!username && !!password && (!isRegister || (passwordMeetsPolicy && passwordsMatch));
+    !submitting &&
+    !!username &&
+    !!password &&
+    (!isRegister || (!!name.trim() && nameValid && passwordMeetsPolicy && passwordsMatch));
 
   async function handleSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
       if (mode === "login") await login(username, password);
-      else await register(username, password);
+      else await register(username, password, name.trim());
     } catch {
       // authError (from useAuth) already reflects the failure; nothing else to do.
     } finally {
@@ -126,7 +56,8 @@ export function AuthScreen() {
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center" style={{ background: "var(--surface-content)" }}>
+    <div className="flex h-full w-full flex-col" style={{ background: "var(--surface-content)" }}>
+      <div className="flex flex-1 items-center justify-center">
       <div
         className="w-[360px] p-6"
         style={{
@@ -165,14 +96,29 @@ export function AuthScreen() {
                   textAlign: "center",
                 }}
               >
-                {m === "login" ? "Sign in" : "Create account"}
+                {m === "login" ? "Login" : "Create account"}
               </button>
             );
           })}
         </div>
 
         <div className="flex flex-col gap-3.5">
-          <TextField label="Username" type="text" value={username} onChange={setUsername} onEnter={handleSubmit} autoFocus />
+          {isRegister && (
+            <div className="flex flex-col gap-1.5">
+              <TextField label="Name" type="text" value={name} onChange={setName} onEnter={handleSubmit} autoFocus autoComplete="name" />
+              <div style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
+                This name will be visible to others in shared workspaces.
+              </div>
+            </div>
+          )}
+          <TextField
+            label="Username"
+            type="text"
+            value={username}
+            onChange={setUsername}
+            onEnter={handleSubmit}
+            autoFocus={!isRegister}
+          />
           <TextField
             label="Password"
             type="password"
@@ -208,16 +154,42 @@ export function AuthScreen() {
               Passwords don't match.
             </div>
           )}
+          {isRegister && name && !nameValid && (
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--status-not-started-text)" }}>
+              Name can only contain letters, spaces, hyphens, and apostrophes.
+            </div>
+          )}
 
           {authError && (
             <div style={{ fontSize: "var(--text-xs)", color: "var(--status-not-started-text)" }}>{authError}</div>
           )}
 
           <Button variant="primary" size="lg" onClick={handleSubmit} disabled={!canSubmit}>
-            {mode === "login" ? "Sign in" : "Create account"}
+            {mode === "login" ? "Login" : "Create account"}
           </Button>
         </div>
       </div>
+      </div>
+
+      <footer
+        className="flex items-center justify-center gap-2 pb-5"
+        style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}
+      >
+        <span>Todora</span>
+        <span aria-hidden="true">·</span>
+        <a href="https://github.com/khesly1903/Todora" target="_blank" rel="noreferrer" style={{ color: "inherit" }}>
+          GitHub
+        </a>
+        <span aria-hidden="true">·</span>
+        <a
+          href="https://github.com/khesly1903/Todora/blob/main/LICENSE"
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: "inherit" }}
+        >
+          MIT License
+        </a>
+      </footer>
     </div>
   );
 }

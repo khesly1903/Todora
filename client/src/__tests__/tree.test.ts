@@ -5,6 +5,7 @@ import {
   deletionImpact,
   findPath,
   groupTasksByArea,
+  splitActiveAndCompleted,
 } from "../tree";
 import { makeArea, makeTask } from "./factories";
 
@@ -76,6 +77,24 @@ describe("deletionImpact", () => {
     const w = roots.find((r) => r.id === "workshops")!;
     // descendants: enrollments, payments, grading = 3; tasks: workshops(1) + payments(1) = 2
     expect(deletionImpact(w, byArea)).toEqual({ areas: 3, tasks: 2 });
+  });
+});
+
+describe("splitActiveAndCompleted", () => {
+  it("separates DONE tasks from open ones", () => {
+    const open1 = makeTask({ id: "t1", status: "NOT_STARTED" });
+    const open2 = makeTask({ id: "t2", status: "COOKING" });
+    const done1 = makeTask({ id: "t3", status: "DONE", completedAt: "2026-01-01T00:00:00.000Z" });
+    const { active, completed } = splitActiveAndCompleted([open1, done1, open2]);
+    expect(active.map((t) => t.id)).toEqual(["t1", "t2"]);
+    expect(completed.map((t) => t.id)).toEqual(["t3"]);
+  });
+
+  it("sorts completed tasks by completedAt descending", () => {
+    const older = makeTask({ id: "old", status: "DONE", completedAt: "2026-01-01T00:00:00.000Z" });
+    const newer = makeTask({ id: "new", status: "DONE", completedAt: "2026-01-02T00:00:00.000Z" });
+    const { completed } = splitActiveAndCompleted([older, newer]);
+    expect(completed.map((t) => t.id)).toEqual(["new", "old"]);
   });
 });
 

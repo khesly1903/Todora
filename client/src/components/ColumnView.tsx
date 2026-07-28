@@ -3,8 +3,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Task } from "../types";
 import type { AreaNode } from "../tree";
-import { countSubtree } from "../tree";
-import { ChevronRight, DueBadge, FolderIcon, InlineInput, PlusIcon, StatusDot } from "./primitives";
+import { countSubtree, splitActiveAndCompleted } from "../tree";
+import { ChevronRight, ChevronToggle, DueBadge, FolderIcon, InlineInput, PlusIcon, StatusDot } from "./primitives";
 import { isOverdue } from "../utils";
 import { PRIORITY_COLORS } from "../types";
 
@@ -142,6 +142,7 @@ export function TaskColumnItem({
   selected,
   editing,
   canEdit,
+  draggable = true,
   onSelect,
   onCycleStatus,
   onStartEdit,
@@ -153,6 +154,8 @@ export function TaskColumnItem({
   selected: boolean;
   editing: boolean;
   canEdit: boolean;
+  /** Completed tasks render read-only, outside the sortable set — same as Tree view. */
+  draggable?: boolean;
   onSelect: () => void;
   onCycleStatus: () => void;
   onStartEdit: () => void;
@@ -176,7 +179,7 @@ export function TaskColumnItem({
   return (
     <div
       ref={dnd.ref}
-      {...(canEdit ? dnd.handleProps : {})}
+      {...(canEdit && draggable ? dnd.handleProps : {})}
       role="button"
       tabIndex={0}
       onMouseEnter={() => setHover(true)}
@@ -225,6 +228,105 @@ export function TaskColumnItem({
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Active tasks render inline; DONE tasks collapse into a "Completed (N)" section,
+ * hidden by default — same behavior as the Tree view's task panel.
+ */
+export function TaskColumnList({
+  tasks,
+  selectedTaskId,
+  editingTaskId,
+  canEdit,
+  onSelect,
+  onCycleStatus,
+  onStartEdit,
+  onSubmitEdit,
+  onCancelEdit,
+  onDelete,
+}: {
+  tasks: Task[];
+  selectedTaskId: string | null;
+  editingTaskId: string | null;
+  canEdit: boolean;
+  onSelect: (task: Task) => void;
+  onCycleStatus: (task: Task) => void;
+  onStartEdit: (task: Task) => void;
+  onSubmitEdit: (task: Task, title: string) => void;
+  onCancelEdit: () => void;
+  onDelete: (task: Task) => void;
+}) {
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [completedExpanded, setCompletedExpanded] = useState(true);
+  const { active, completed } = splitActiveAndCompleted(tasks);
+
+  function row(task: Task, draggable: boolean) {
+    return (
+      <TaskColumnItem
+        key={task.id}
+        task={task}
+        selected={selectedTaskId === task.id}
+        editing={editingTaskId === task.id}
+        canEdit={canEdit}
+        draggable={draggable}
+        onSelect={() => onSelect(task)}
+        onCycleStatus={() => onCycleStatus(task)}
+        onStartEdit={() => onStartEdit(task)}
+        onSubmitEdit={(title) => onSubmitEdit(task, title)}
+        onCancelEdit={onCancelEdit}
+        onDelete={() => onDelete(task)}
+      />
+    );
+  }
+
+  return (
+    <>
+      {active.map((task) => row(task, true))}
+
+      {completed.length > 0 &&
+        (!showCompleted ? (
+          <div className="mt-1 flex items-center justify-between px-2 py-1.5">
+            <span style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
+              {completed.length} completed
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowCompleted(true)}
+              className="cursor-pointer border-none bg-transparent p-0"
+              style={{ fontSize: "var(--text-2xs)", color: "var(--accent-9)" }}
+            >
+              Show completed
+            </button>
+          </div>
+        ) : (
+          <div className="mt-1">
+            <div
+              onClick={() => setCompletedExpanded((v) => !v)}
+              className="flex h-[22px] cursor-default items-center gap-1.5 px-2"
+            >
+              <ChevronToggle expanded={completedExpanded} />
+              <span style={{ fontSize: "var(--text-2xs)", fontWeight: "var(--weight-semibold)", color: "var(--text-secondary)" }}>
+                Completed ({completed.length})
+              </span>
+              <span className="flex-1" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCompleted(false);
+                }}
+                className="cursor-pointer border-none bg-transparent p-0"
+                style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}
+              >
+                Hide
+              </button>
+            </div>
+            {completedExpanded && completed.map((task) => row(task, false))}
+          </div>
+        ))}
+    </>
   );
 }
 

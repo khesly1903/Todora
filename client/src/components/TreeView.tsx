@@ -71,6 +71,7 @@ import {
   deletionImpact,
   findPath,
   groupTasksByArea,
+  splitActiveAndCompleted,
   type AreaNode,
 } from "../tree";
 import type { Area } from "../types";
@@ -629,10 +630,7 @@ function TaskPanel({
   const [completedExpanded, setCompletedExpanded] = useState(true);
   const setEditingTaskId = onSetEditingTask;
 
-  const active = tasks.filter((t) => t.status !== "DONE");
-  const completed = [...tasks.filter((t) => t.status === "DONE")].sort((a, b) =>
-    (b.completedAt ?? "").localeCompare(a.completedAt ?? ""),
-  );
+  const { active, completed } = splitActiveAndCompleted(tasks);
 
   return (
     <>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidPassword, isValidUsername } from "./authValidation.js";
+import { isValidName, isValidPassword, isValidUsername } from "./authValidation.js";
 
 describe("isValidUsername", () => {
   it("accepts letters, numbers, underscore within length bounds", () => {
@@ -42,5 +42,39 @@ describe("isValidPassword", () => {
 
   it("rejects a password missing both a digit and a special character", () => {
     expect(isValidPassword("onlyletters")).toBe(false);
+  });
+});
+
+describe("isValidName", () => {
+  it("accepts plain ASCII names", () => {
+    expect(isValidName("Alice Smith")).toBe(true);
+    expect(isValidName("Bob")).toBe(true);
+  });
+
+  it("accepts Unicode letters, including Turkish characters", () => {
+    expect(isValidName("Ayşe Öztürk")).toBe(true);
+    expect(isValidName("Gökhan Çelik")).toBe(true);
+    expect(isValidName("İbrahim Yılmaz")).toBe(true);
+  });
+
+  it("accepts hyphens, apostrophes, and periods", () => {
+    expect(isValidName("Mary-Jane O'Brien")).toBe(true);
+    expect(isValidName("J. R. Tolkien")).toBe(true);
+  });
+
+  it("rejects digits and symbols that aren't name punctuation", () => {
+    expect(isValidName("Alice123")).toBe(false);
+    expect(isValidName("Alice@Smith")).toBe(false);
+    expect(isValidName("Alice_Smith")).toBe(false);
+  });
+
+  it("rejects empty or whitespace-only names", () => {
+    expect(isValidName("")).toBe(false);
+    expect(isValidName("   ")).toBe(false);
+  });
+
+  it("rejects names over 50 characters", () => {
+    expect(isValidName("a".repeat(50))).toBe(true);
+    expect(isValidName("a".repeat(51))).toBe(false);
   });
 });
