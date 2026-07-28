@@ -9,4 +9,7 @@ export default defineConfig({
       "/api": "http://localhost:3001",
     },
   },
+  preview: {
+    allowedHosts: ["todora.xyz", "www.todora.xyz"],
+  },
 });
