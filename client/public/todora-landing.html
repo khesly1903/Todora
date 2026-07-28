@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todora — Every task, in its place.</title>
+  <meta name="description" content="Todora organizes work the way Finder organizes files: a tree of Areas holding Areas and tasks, tracked by status, reviewed as a tree, columns, or a calendar." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="todora-landing.css" />
+</head>
+<body>
+
+  <header class="nav-edge container">
+    <a class="wordmark" href="/">
+      <svg class="wordmark__mark" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <rect x="2" y="2" width="16" height="16" rx="4" />
+        <path d="M6 10.5 L9 13.5 L14.5 6.5" />
+      </svg>
+      Todora
+    </a>
+    <a class="link-cta" href="/?mode=register">Create account →</a>
+  </header>
+
+  <main class="container">
+
+    <section class="hero">
+      <div class="hero-art">
+        <div class="hero__copy">
+          <h1 class="hero__display">Every task, in its place.</h1>
+          <p class="hero__lede">Todora organizes work the way Finder organizes files — Areas hold Areas and tasks, each one carrying a status you can see at a glance.</p>
+          <p class="hero__cta">
+            <a class="link-cta" href="/?mode=register">Create account →</a>
+          </p>
+        </div>
+
+        <button type="button" class="hero__art" aria-labelledby="grow-caption">
+          <svg class="grow" viewBox="0 0 220 220" role="img" aria-hidden="true">
+            <rect class="grow__box-fill" x="30" y="30" width="160" height="160" rx="28" />
+            <rect class="grow__box" pathLength="100" x="30" y="30" width="160" height="160" rx="28" />
+            <path class="grow__check" pathLength="100" d="M64 116 L96 148 L156 78" />
+          </svg>
+          <span class="hero__art-caption" id="grow-caption">Replay: a task, checked off</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="position">
+      <header class="head-hang">
+        <h2>How Todora thinks</h2>
+      </header>
+      <div class="position__body">
+        <p>Most task apps flatten everything into one list, sorted by due date or priority, with no sense of where a task belongs. Todora doesn’t.</p>
+        <p>Work already has structure — projects inside projects, tasks inside projects — the way files sit inside folders. Todora keeps that structure instead of erasing it, so a list of a hundred tasks stays as legible as a list of ten.</p>
+      </div>
+    </section>
+
+    <section class="stages">
+
+      <article class="stage">
+        <div>
+          <span class="stage__num">1.0</span>
+          <h3 class="stage__title">Organize</h3>
+          <p class="stage__body">Build a tree of Areas — containers for your work, nested as deep as a project needs. Tasks live inside an Area, never as a flat pile with no home.</p>
+        </div>
+        <aside class="stage__margin">
+          <div class="tree-glyph stage__glyph" aria-hidden="true">
+            <div class="tree-glyph__row tree-glyph__row--1"><span class="tree-glyph__bar"></span></div>
+            <div class="tree-glyph__row tree-glyph__row--2"><span class="tree-glyph__bar"></span></div>
+            <div class="tree-glyph__row tree-glyph__row--3"><span class="tree-glyph__bar"></span></div>
+            <div class="tree-glyph__row tree-glyph__row--4"><span class="tree-glyph__bar"></span></div>
+          </div>
+          <p class="stage__note">The same Area name can appear in different branches — Payments under Classes, Payments under Invoicing — each one distinct.</p>
+        </aside>
+      </article>
+
+      <article class="stage">
+        <div>
+          <span class="stage__num">2.0</span>
+          <h3 class="stage__title">Track</h3>
+          <p class="stage__body">Click a task’s status to move it from not started, to in progress, to done. Drag and drop to reorder, reprioritize, or move a task into a different Area entirely.</p>
+        </div>
+        <aside class="stage__margin">
+          <div class="status-glyph stage__glyph" aria-hidden="true">
+            <div class="status-glyph__item">
+              <span class="status-glyph__dot"></span>
+              <span class="status-glyph__label">Not started</span>
+            </div>
+            <div class="status-glyph__item">
+              <span class="status-glyph__dot status-glyph__dot--half"></span>
+              <span class="status-glyph__label">In progress</span>
+            </div>
+            <div class="status-glyph__item">
+              <span class="status-glyph__dot status-glyph__dot--done"></span>
+              <span class="status-glyph__label">Done</span>
+            </div>
+          </div>
+          <p class="stage__note">Status is never colour alone — every dot carries a label, for anyone who can’t rely on colour.</p>
+        </aside>
+      </article>
+
+      <article class="stage">
+        <div>
+          <span class="stage__num">3.0</span>
+          <h3 class="stage__title">Review</h3>
+          <p class="stage__body">Switch between a tree, Finder-style columns, or a monthly calendar. Finished tasks fade out and collapse into a section of their own, so what’s in front of you is the work still ahead.</p>
+        </div>
+        <aside class="stage__margin">
+          <div class="cal-glyph stage__glyph" aria-hidden="true">
+            <span class="cal-glyph__cell"></span><span class="cal-glyph__cell"></span><span class="cal-glyph__cell cal-glyph__cell--marked"></span>
+            <span class="cal-glyph__cell"></span><span class="cal-glyph__cell"></span><span class="cal-glyph__cell"></span>
+            <span class="cal-glyph__cell"></span><span class="cal-glyph__cell"></span><span class="cal-glyph__cell"></span>
+          </div>
+          <p class="stage__note">Nothing is deleted without confirmation — Todora asks first, every time.</p>
+        </aside>
+      </article>
+
+      <article class="stage">
+        <div>
+          <span class="stage__num">4.0</span>
+          <h3 class="stage__title">Share</h3>
+          <p class="stage__body">Invite people into a workspace by username, no email required. Owners, editors, and viewers each see exactly what their role allows — and an invitation waits for approval before anyone gets in.</p>
+        </div>
+        <aside class="stage__margin">
+          <div class="role-glyph stage__glyph" aria-hidden="true">
+            <span class="role-glyph__chip">O</span>
+            <span class="role-glyph__chip">E</span>
+            <span class="role-glyph__chip">V</span>
+          </div>
+          <p class="stage__note">One owner per workspace. Ownership doesn’t transfer, and it can’t be removed by accident.</p>
+        </aside>
+      </article>
+
+    </section>
+
+    <section class="cta-band">
+      <h2>Start with one Area.</h2>
+      <a class="link-cta" href="/?mode=register">Create account →</a>
+    </section>
+
+  </main>
+
+  <footer class="foot-letter container">
+    <p class="foot-letter__close">Yours,<br><span class="foot-letter__sign">— Todora</span></p>
+    <p class="foot-letter__ps">P.S. — that box gets checked up above. So does your work, one task at a time.</p>
+  </footer>
+
+  <script>
+    (function () {
+      var art = document.querySelector(".grow");
+      var btn = document.querySelector(".hero__art");
+      if (!art || !btn) return;
+      var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      function play() {
+        if (reduceMotion.matches) return;
+        art.classList.remove("is-playing");
+        void art.getBoundingClientRect();
+        art.classList.add("is-playing");
+      }
+
+      if (!reduceMotion.matches) {
+        requestAnimationFrame(function () { requestAnimationFrame(play); });
+      }
+      btn.addEventListener("click", play);
+    })();
+  </script>
+
+</body>
+</html>

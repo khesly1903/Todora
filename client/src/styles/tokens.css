@@ -1,0 +1,193 @@
+/* Todora design tokens — mirrored from the "Todora Design System" claude.ai/design project.
+   The design project is the source of truth; edit there and re-sync. */
+
+:root {
+  /* Base neutral ramp (light) */
+  --gray-0: #ffffff;
+  --gray-25: #fbfbfc;
+  --gray-50: #f5f5f7;
+  --gray-100: #ececee;
+  --gray-150: #e3e3e6;
+  --gray-200: #d9d9dd;
+  --gray-300: #c7c7cc;
+  --gray-400: #a9a9b0;
+  --gray-500: #8b8b93;
+  --gray-600: #6e6e76;
+  --gray-700: #55555c;
+  --gray-800: #3a3a3f;
+  --gray-900: #232326;
+  --gray-950: #17171a;
+
+  /* Semantic surfaces */
+  --surface-sidebar: var(--gray-50);
+  --surface-content: var(--gray-0);
+  --surface-inspector: var(--gray-50);
+  --surface-raised: var(--gray-0);
+  --surface-overlay: var(--gray-0);
+  --surface-sunken: var(--gray-100);
+  --surface-hover: rgba(0, 0, 0, 0.035);
+  --surface-active: rgba(0, 0, 0, 0.06);
+
+  /* Borders */
+  --border-subtle: var(--gray-150);
+  --border-default: var(--gray-200);
+  --border-strong: var(--gray-300);
+
+  /* Text */
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-tertiary: var(--gray-500);
+  --text-disabled: var(--gray-400);
+  --text-on-accent: #ffffff;
+  --text-on-status: #ffffff;
+
+  /* Accent (selection / focus) */
+  --accent-9: #0a72e8;
+  --accent-10: #0862c9;
+  --accent-tint: #e8f1fd;
+  --accent-tint-strong: #d3e6fb;
+  --focus-ring: #0a72e8;
+
+  /* Status — Not Started (red) / Cooking (amber) / Done (green) */
+  --status-not-started: #e5484d;
+  --status-not-started-bg: #fdecec;
+  --status-not-started-border: #f6c9ca;
+  --status-not-started-text: #c22a30;
+
+  --status-cooking: #f5a623;
+  --status-cooking-bg: #fef3de;
+  --status-cooking-border: #f8dfa4;
+  --status-cooking-text: #96590c;
+
+  --status-done: #30a46c;
+  --status-done-bg: #e7f6ee;
+  --status-done-border: #b7e4cc;
+  --status-done-text: #1c7a4d;
+
+  --status-neutral: var(--gray-400);
+
+  /* Destructive */
+  --danger-9: #e5484d;
+  --danger-10: #cd3a3f;
+  --danger-tint: #fdecec;
+
+  /* Shadows (light) */
+  --shadow-color: 220 15% 20%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.08);
+  --shadow-md: 0 2px 8px hsl(var(--shadow-color) / 0.10), 0 1px 2px hsl(var(--shadow-color) / 0.06);
+  --shadow-lg: 0 8px 24px hsl(var(--shadow-color) / 0.16), 0 2px 6px hsl(var(--shadow-color) / 0.08);
+  --shadow-popover: 0 4px 16px hsl(var(--shadow-color) / 0.14), 0 0 0 1px hsl(var(--shadow-color) / 0.05);
+
+  --scrim: rgba(20, 20, 24, 0.35);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "Menlo", "Consolas", monospace;
+
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 15px;
+  --text-xl: 17px;
+  --text-2xl: 20px;
+  --text-3xl: 24px;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.4;
+  --leading-relaxed: 1.55;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+
+  /* Spacing / radius / motion */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-full: 999px;
+
+  --row-height-sm: 24px;
+  --row-height-md: 28px;
+  --row-height-lg: 32px;
+
+  --sidebar-width: 240px;
+
+  --duration-fast: 100ms;
+  --duration-normal: 150ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-theme="dark"] {
+  --surface-sidebar: #1c1c1f;
+  --surface-content: #232327;
+  --surface-inspector: #1c1c1f;
+  --surface-raised: #2a2a2e;
+  --surface-overlay: #2c2c31;
+  --surface-sunken: #19191c;
+  --surface-hover: rgba(255, 255, 255, 0.055);
+  --surface-active: rgba(255, 255, 255, 0.09);
+
+  --border-subtle: #313136;
+  --border-default: #3a3a40;
+  --border-strong: #4a4a52;
+
+  --text-primary: #f0f0f2;
+  --text-secondary: #a7a7ae;
+  --text-tertiary: #86868d;
+  --text-disabled: #5a5a60;
+  --text-on-accent: #ffffff;
+  --text-on-status: #14100a;
+
+  --accent-9: #3b93f0;
+  --accent-10: #5aa3f2;
+  --accent-tint: #12253b;
+  --accent-tint-strong: #17324d;
+  --focus-ring: #3b93f0;
+
+  --status-not-started: #f5636a;
+  --status-not-started-bg: #3a1f21;
+  --status-not-started-border: #5c2a2d;
+  --status-not-started-text: #ff9a9f;
+
+  --status-cooking: #f7b955;
+  --status-cooking-bg: #3a2c14;
+  --status-cooking-border: #5c451c;
+  --status-cooking-text: #ffcf85;
+
+  --status-done: #4cc987;
+  --status-done-bg: #163526;
+  --status-done-border: #1f5238;
+  --status-done-text: #7fe3ab;
+
+  --status-neutral: var(--gray-600);
+
+  --danger-9: #f5636a;
+  --danger-10: #f5636a;
+  --danger-tint: #3a1f21;
+
+  --shadow-color: 220 30% 2%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.4);
+  --shadow-md: 0 2px 8px hsl(var(--shadow-color) / 0.45), 0 1px 2px hsl(var(--shadow-color) / 0.3);
+  --shadow-lg: 0 8px 28px hsl(var(--shadow-color) / 0.55), 0 2px 6px hsl(var(--shadow-color) / 0.3);
+  --shadow-popover: 0 4px 20px hsl(var(--shadow-color) / 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+
+  --scrim: rgba(0, 0, 0, 0.55);
+}

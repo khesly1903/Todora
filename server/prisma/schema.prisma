@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships         WorkspaceMember[]
+  ownedWorkspaces     Workspace[]  @relation("WorkspaceOwner")
+  sentInvitations     Invitation[] @relation("InvitedBy")
+  receivedInvitations Invitation[] @relation("InvitedUser")
+  createdTasks        Task[]       @relation("TaskCreatedBy")
+  completedTasks      Task[]       @relation("TaskCompletedBy")
+}
+
+enum WorkspaceRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum InvitationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Workspace {
+  id          String            @id @default(cuid())
+  name        String
+  ownerId     String
+  owner       User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  areas       Area[]
+  members     WorkspaceMember[]
+  invitations Invitation[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([ownerId])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(EDITOR)
+  sortOrder   Int           @default(0) // per-user ordering of that user's workspaces
+  createdAt   DateTime      @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Invitation {
+  id            String           @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedUserId String
+  invitedUser   User             @relation("InvitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedById   String
+  invitedBy     User             @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+  role          WorkspaceRole    @default(EDITOR)
+  status        InvitationStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([workspaceId, invitedUserId])
+  @@index([invitedUserId])
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  COOKING
+  DONE
+}
+
+enum Priority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Area {
+  id          String    @id @default(cuid())
+  name        String
+  parentId    String?
+  parent      Area?     @relation("AreaChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Area[]    @relation("AreaChildren")
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([parentId])
+  @@index([workspaceId])
+}
+
+model Task {
+  id            String     @id @default(cuid())
+  areaId        String
+  area          Area       @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  status        TaskStatus @default(NOT_STARTED)
+  priority      Priority   @default(NONE)
+  tags          String[]   @default([])
+  sortOrder     Int        @default(0)
+  dueAt         DateTime?
+  completedAt   DateTime?
+  createdById   String?
+  createdBy     User?      @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  completedById String?
+  completedBy   User?      @relation("TaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([areaId])
+  @@index([createdById])
+  @@index([completedById])
+}
