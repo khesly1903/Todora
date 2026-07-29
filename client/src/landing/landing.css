@@ -152,19 +152,6 @@
   align-items: baseline;
   gap: var(--space-lg);
 }
-.landing-page .wordmark__mark { flex: none; }
-.landing-page .wordmark__mark path {
-  fill: none;
-  stroke: var(--color-accent-ink);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.landing-page .wordmark__mark rect {
-  fill: none;
-  stroke: var(--color-accent-ink);
-  stroke-width: 2.2;
-}
 
 /* ---------- Hero — H9 Custom illustration centerpiece ---------- */
 
@@ -202,15 +189,6 @@
   margin-inline: auto;
 }
 .landing-page .hero__art:focus-visible .grow { outline: 2px solid var(--color-focus); outline-offset: 6px; border-radius: 999px; }
-.landing-page .hero__art-caption {
-  display: block;
-  margin-top: var(--space-sm);
-  text-align: center;
-  font-family: var(--font-outlier);
-  font-size: var(--text-xs);
-  color: var(--color-muted);
-  letter-spacing: 0.02em;
-}
 
 /* a task moving through its real lifecycle — not started (red · X) → cooking (amber · clock) → done (green · check) */
 .landing-page .grow__fill { fill-opacity: 0; }

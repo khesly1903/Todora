@@ -62,24 +62,68 @@ describe("resolveDragEnd — areas", () => {
     });
   });
 
-  it("re-parents an area into an unrelated area", () => {
-    expect(resolveDragEnd("admin", "grading", data)).toEqual({
-      type: "reparent-area",
+  it("nests an area into an unrelated area when dropped in the middle band", () => {
+    expect(resolveDragEnd("admin", "grading", data, "into")).toEqual({
+      type: "move-area",
       areaId: "admin",
       parentId: "grading",
+      orderedIds: ["admin"],
       expandId: "grading",
     });
   });
 
+  it("defaults to nesting when no drop position is given", () => {
+    expect(resolveDragEnd("admin", "grading", data)).toEqual({
+      type: "move-area",
+      areaId: "admin",
+      parentId: "grading",
+      orderedIds: ["admin"],
+      expandId: "grading",
+    });
+  });
+
+  it("becomes a sibling before the hovered area when dropped in the top band", () => {
+    // admin (root) dropped just above "enrollments" (child of workshops) → becomes workshops' first child
+    expect(resolveDragEnd("admin", "enrollments", data, "before")).toEqual({
+      type: "move-area",
+      areaId: "admin",
+      parentId: "workshops",
+      orderedIds: ["admin", "enrollments", "grading"],
+      expandId: "workshops",
+    });
+  });
+
+  it("becomes a sibling after the hovered area when dropped in the bottom band", () => {
+    expect(resolveDragEnd("admin", "enrollments", data, "after")).toEqual({
+      type: "move-area",
+      areaId: "admin",
+      parentId: "workshops",
+      orderedIds: ["enrollments", "admin", "grading"],
+      expandId: "workshops",
+    });
+  });
+
+  it("reorders within the same sibling group regardless of drop band", () => {
+    expect(resolveDragEnd("grading", "enrollments", data, "before")).toEqual({
+      type: "reorder-areas",
+      orderedIds: ["grading", "enrollments"],
+    });
+  });
+
   it("blocks nesting an area into its own descendant (cycle protection)", () => {
-    expect(resolveDragEnd("workshops", "enrollments", data)).toBeNull();
+    expect(resolveDragEnd("workshops", "enrollments", data, "into")).toBeNull();
+  });
+
+  it("blocks becoming a sibling of a descendant too (cycle protection applies to all drop bands)", () => {
+    expect(resolveDragEnd("workshops", "enrollments", data, "before")).toBeNull();
   });
 
   it("pulls a nested area out to the top level via the root drop target", () => {
     expect(resolveDragEnd("enrollments", ROOT_DROP_ID, data)).toEqual({
-      type: "reparent-area",
+      type: "move-area",
       areaId: "enrollments",
       parentId: null,
+      orderedIds: ["workshops", "admin", "enrollments"],
     });
   });
 

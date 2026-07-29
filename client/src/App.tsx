@@ -16,7 +16,7 @@ import { buildExport, downloadJson, pickJsonFile } from "./backup";
 import { pushToast } from "./toast";
 import { LandingPage } from "./landing/LandingPage";
 import type { ExportNode } from "./api";
-import type { Task } from "./types";
+import type { Area, Task } from "./types";
 import { canEditRole } from "./types";
 
 type Theme = "light" | "dark";
@@ -27,6 +27,25 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   columns: "Columns",
   calendar: "Calendar",
 };
+
+const ZOOM_STEPS = [80, 90, 100, 110, 120, 130, 140, 150];
+
+function useZoom() {
+  const [zoom, setZoom] = useState<number>(() => {
+    const stored = Number(localStorage.getItem("todora-zoom"));
+    return ZOOM_STEPS.includes(stored) ? stored : 100;
+  });
+  useEffect(() => {
+    document.documentElement.style.zoom = zoom === 100 ? "" : `${zoom}%`;
+    localStorage.setItem("todora-zoom", String(zoom));
+  }, [zoom]);
+  return {
+    zoom,
+    zoomIn: () => setZoom((z) => ZOOM_STEPS[Math.min(ZOOM_STEPS.indexOf(z) + 1, ZOOM_STEPS.length - 1)]!),
+    zoomOut: () => setZoom((z) => ZOOM_STEPS[Math.max(ZOOM_STEPS.indexOf(z) - 1, 0)]!),
+    reset: () => setZoom(100),
+  };
+}
 
 function useTheme() {
   const [theme, setTheme] = useState<Theme>(
@@ -55,6 +74,62 @@ function useCurrentWorkspaceId() {
     if (id) localStorage.setItem("todora-workspace", id);
   }, [id]);
   return [id, setId] as const;
+}
+
+function ZoomControl({
+  zoom,
+  onZoomOut,
+  onZoomIn,
+  onReset,
+}: {
+  zoom: number;
+  onZoomOut: () => void;
+  onZoomIn: () => void;
+  onReset: () => void;
+}) {
+  const buttonStyle = {
+    fontSize: "var(--text-sm)",
+    color: "var(--text-secondary)",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+  } as const;
+  return (
+    <div
+      className="flex h-[22px] items-center"
+      style={{ background: "var(--surface-sunken)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-full)" }}
+    >
+      <button
+        type="button"
+        title="Zoom out"
+        onClick={onZoomOut}
+        disabled={zoom <= ZOOM_STEPS[0]!}
+        className="inline-flex h-full w-5 items-center justify-center disabled:opacity-40"
+        style={buttonStyle}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        title="Reset zoom"
+        onClick={onReset}
+        className="inline-flex h-full items-center justify-center px-1 tabular-nums"
+        style={{ ...buttonStyle, fontSize: "var(--text-2xs)", fontWeight: "var(--weight-semibold)", minWidth: 32 }}
+      >
+        {zoom}%
+      </button>
+      <button
+        type="button"
+        title="Zoom in"
+        onClick={onZoomIn}
+        disabled={zoom >= ZOOM_STEPS.at(-1)!}
+        className="inline-flex h-full w-5 items-center justify-center disabled:opacity-40"
+        style={buttonStyle}
+      >
+        +
+      </button>
+    </div>
+  );
 }
 
 function UserMenu({
@@ -172,6 +247,7 @@ function ViewSwitch({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
 function AuthedApp() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
+  const { zoom, zoomIn, zoomOut, reset: resetZoom } = useZoom();
   const [view, setView] = useViewMode();
   const workspacesQuery = useWorkspaces();
   const [workspaceId, setWorkspaceId] = useCurrentWorkspaceId();
@@ -205,6 +281,7 @@ function AuthedApp() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
+  const [focusAreaId, setFocusAreaId] = useState<string | null>(null);
 
   const areas = areasQuery.data ?? [];
   const tasks = tasksQuery.data ?? [];
@@ -271,6 +348,11 @@ function AuthedApp() {
     setFocusTaskId(task.id);
   }
 
+  function pickArea(area: Area) {
+    setView("tree");
+    setFocusAreaId(area.id);
+  }
+
   return (
     <div className="flex h-full w-full flex-col" style={{ background: "var(--surface-content)" }}>
       <header
@@ -297,7 +379,7 @@ function AuthedApp() {
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
-          title="Search tasks or run a command (⌘K)"
+          title="Search areas, tasks, or run a command (⌘K)"
           className="flex h-8 w-[380px] max-w-[40vw] cursor-text items-center gap-2 justify-self-center px-2.5"
           style={{
             background: "var(--surface-raised)",
@@ -308,7 +390,7 @@ function AuthedApp() {
         >
           <SearchIcon />
           <span className="flex-1 text-left" style={{ fontSize: "var(--text-sm)" }}>
-            Search tasks or run a command…
+            Search areas, tasks, or run a command…
           </span>
           <span
             className="shrink-0 px-1.5 py-0.5"
@@ -342,6 +424,7 @@ function AuthedApp() {
           >
             ?
           </button>
+          <ZoomControl zoom={zoom} onZoomOut={zoomOut} onZoomIn={zoomIn} onReset={resetZoom} />
           <IconButton
             icon={theme === "light" ? <MoonIcon /> : <SunIcon />}
             onClick={toggle}
@@ -382,6 +465,8 @@ function AuthedApp() {
             canEdit={canEdit}
             focusTaskId={focusTaskId}
             onFocusHandled={() => setFocusTaskId(null)}
+            focusAreaId={focusAreaId}
+            onAreaFocusHandled={() => setFocusAreaId(null)}
           />
         ) : view === "columns" ? (
           <ColumnViewScreen areas={areas} tasks={tasks} workspaceId={activeWorkspaceId} canEdit={canEdit} />
@@ -397,6 +482,7 @@ function AuthedApp() {
         tasks={tasks}
         areas={areas}
         onPickTask={pickTask}
+        onPickArea={pickArea}
       />
 
       <ShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

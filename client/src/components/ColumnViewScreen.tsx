@@ -129,12 +129,20 @@ export function ColumnViewScreen({
   const selectedTask = selectedTaskId ? (tasks.find((t) => t.id === selectedTaskId) ?? null) : null;
 
   const query = search.trim().toLowerCase();
+  const areaMatches = query ? areas.filter((a) => a.name.toLowerCase().includes(query)) : [];
   const matches = query ? tasks.filter((t) => t.title.toLowerCase().includes(query)) : [];
 
   function openTaskFromSearch(task: Task) {
     const chain = findPath(roots, task.areaId) ?? [];
     setSelection(chain.map((n) => n.id));
     setSelectedTaskId(task.id);
+    setSearch("");
+  }
+
+  function openAreaFromSearch(area: Area) {
+    const chain = findPath(roots, area.id) ?? [];
+    setSelection(chain.map((n) => n.id));
+    setSelectedTaskId(null);
     setSearch("");
   }
 
@@ -182,9 +190,15 @@ export function ColumnViewScreen({
         <div className="flex shrink-0 items-center gap-2">
         <input
           value={search}
-          placeholder="Search tasks…"
+          placeholder="Search areas and tasks…"
           onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && setSearch("")}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setSearch("");
+            else if (e.key === "Enter") {
+              if (areaMatches[0]) openAreaFromSearch(areaMatches[0]);
+              else if (matches[0]) openTaskFromSearch(matches[0]);
+            }
+          }}
           className="w-[170px] shrink-0 px-2 py-1 outline-none"
           style={{
             fontFamily: "var(--font-sans)",
@@ -227,7 +241,13 @@ export function ColumnViewScreen({
 
       {query ? (
         <div className="flex-1 overflow-y-auto px-2 py-2">
-          <SearchResults roots={roots} matches={matches} onPick={openTaskFromSearch} />
+          <SearchResults
+            roots={roots}
+            areaMatches={areaMatches}
+            matches={matches}
+            onPickArea={openAreaFromSearch}
+            onPick={openTaskFromSearch}
+          />
         </div>
       ) : (
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

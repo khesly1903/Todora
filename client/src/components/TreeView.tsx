@@ -1,12 +1,14 @@
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
+  type ClientRect,
   type DraggableAttributes,
   type DraggableSyntheticListeners,
   type DragEndEvent,
+  type DragOverEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
+  pointerWithin,
   useDroppable,
   useSensor,
   useSensors,
@@ -28,7 +30,70 @@ interface DndRowProps {
   style: CSSProperties;
 }
 
-function AreasHeader({ onAddRoot, canEdit }: { onAddRoot: () => void; canEdit: boolean }) {
+function HeaderIconButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="inline-flex h-[18px] w-[18px] cursor-pointer items-center justify-center border-none bg-transparent p-0 hover:bg-[var(--surface-hover)]"
+      style={{ borderRadius: "var(--radius-xs)", color: "var(--text-secondary)" }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ExpandAllIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden>
+      <path
+        d="M2 4.2 L5.5 1.5 L9 4.2 M2 9 L5.5 6.3 L9 9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        transform="rotate(180 5.5 5.5)"
+      />
+    </svg>
+  );
+}
+
+function CollapseAllIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden>
+      <path
+        d="M2 4.2 L5.5 1.5 L9 4.2 M2 9 L5.5 6.3 L9 9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function AreasHeader({
+  onAddRoot,
+  canEdit,
+  onExpandAll,
+  onCollapseAll,
+}: {
+  onAddRoot: () => void;
+  canEdit: boolean;
+  onExpandAll: () => void;
+  onCollapseAll: () => void;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: ROOT_DROP_ID });
   return (
     <div
@@ -51,17 +116,19 @@ function AreasHeader({ onAddRoot, canEdit }: { onAddRoot: () => void; canEdit: b
       >
         {isOver ? "Move to top level" : "Areas"}
       </span>
-      {canEdit && (
-        <button
-          type="button"
-          title="New area"
-          onClick={onAddRoot}
-          className="inline-flex h-[18px] w-[18px] cursor-pointer items-center justify-center border-none bg-transparent p-0 hover:bg-[var(--surface-hover)]"
-          style={{ borderRadius: "var(--radius-xs)", color: "var(--text-secondary)" }}
-        >
-          <PlusIcon />
-        </button>
-      )}
+      <div className="flex items-center gap-0.5">
+        <HeaderIconButton title="Expand all areas" onClick={onExpandAll}>
+          <ExpandAllIcon />
+        </HeaderIconButton>
+        <HeaderIconButton title="Collapse all areas" onClick={onCollapseAll}>
+          <CollapseAllIcon />
+        </HeaderIconButton>
+        {canEdit && (
+          <HeaderIconButton title="New area" onClick={onAddRoot}>
+            <PlusIcon />
+          </HeaderIconButton>
+        )}
+      </div>
     </div>
   );
 }
@@ -97,12 +164,47 @@ import {
   StatusDot,
 } from "./primitives";
 import { isOverdue } from "../utils";
-import { ROOT_DROP_ID, resolveDragEnd } from "../dnd";
+import { ROOT_DROP_ID, resolveDragEnd, type DropPosition } from "../dnd";
 import { DeleteConfirmDialog } from "./Dialog";
 import { TaskInspector } from "./TaskInspector";
 import { SearchResults } from "./SearchResults";
 
 type AddingArea = { parentId: string | null };
+
+/** Current pointer Y, derived from the drag's start event plus how far it has moved since. */
+function pointerY(activatorEvent: Event, delta: { y: number }): number | null {
+  if (activatorEvent instanceof MouseEvent || activatorEvent instanceof PointerEvent) {
+    return activatorEvent.clientY + delta.y;
+  }
+  if (typeof TouchEvent !== "undefined" && activatorEvent instanceof TouchEvent) {
+    const touch = activatorEvent.touches[0] ?? activatorEvent.changedTouches[0];
+    return touch ? touch.clientY + delta.y : null;
+  }
+  return null;
+}
+
+/**
+ * Splits a hovered row into three vertical bands so dragging an area reads the same way
+ * file-tree UIs elsewhere do: the top/bottom slivers reorder as a sibling of the row you're
+ * over, the middle band nests inside it. Without this, hovering anywhere over a row nested it,
+ * which made it easy to drop into the wrong parent and hard to reorder within a level.
+ *
+ * Uses the actual pointer position (start event + delta) rather than the dragged row's own
+ * bounding box: with many short, closely-stacked rows in a deeply nested tree, the dragged
+ * row's translated rect only matches the cursor if it was grabbed dead-center, so basing the
+ * band on it made nesting at deeper levels unreliable.
+ */
+function computeDropPosition(
+  event: { activatorEvent: Event; delta: { y: number } },
+  overRect: ClientRect,
+): DropPosition {
+  const y = pointerY(event.activatorEvent, event.delta);
+  if (y == null) return "into";
+  const ratio = (y - overRect.top) / overRect.height;
+  if (ratio < 0.25) return "before";
+  if (ratio > 0.75) return "after";
+  return "into";
+}
 
 export function TreeView({
   areas,
@@ -111,6 +213,8 @@ export function TreeView({
   canEdit,
   focusTaskId,
   onFocusHandled,
+  focusAreaId,
+  onAreaFocusHandled,
 }: {
   areas: Area[];
   tasks: Task[];
@@ -118,6 +222,8 @@ export function TreeView({
   canEdit: boolean;
   focusTaskId?: string | null;
   onFocusHandled?: () => void;
+  focusAreaId?: string | null;
+  onAreaFocusHandled?: () => void;
 }) {
   const roots = useMemo(() => buildTree(areas), [areas]);
   const tasksByArea = useMemo(() => groupTasksByArea(tasks), [tasks]);
@@ -130,6 +236,7 @@ export function TreeView({
   const [renamingAreaId, setRenamingAreaId] = useState<string | null>(null);
   const [adding, setAdding] = useState<AddingArea | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AreaNode | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ id: string; position: DropPosition } | null>(null);
 
   const createArea = useCreateArea();
   const renameArea = useRenameArea();
@@ -143,11 +250,17 @@ export function TreeView({
   const selectedTask = selectedTaskId ? (tasks.find((t) => t.id === selectedTaskId) ?? null) : null;
 
   const query = search.trim().toLowerCase();
+  const areaMatches = query ? areas.filter((a) => a.name.toLowerCase().includes(query)) : [];
   const matches = query ? tasks.filter((t) => t.title.toLowerCase().includes(query)) : [];
 
   function openTaskFromSearch(task: Task) {
     openArea(task.areaId);
     setSelectedTaskId(task.id);
+    setSearch("");
+  }
+
+  function openAreaFromSearch(area: Area) {
+    openArea(area.id);
     setSearch("");
   }
 
@@ -173,6 +286,14 @@ export function TreeView({
     onFocusHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTaskId]);
+
+  // External focus request (e.g. from the command palette): reveal and select the area.
+  useEffect(() => {
+    if (!focusAreaId) return;
+    if (areaMap.has(focusAreaId)) openArea(focusAreaId);
+    onAreaFocusHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusAreaId]);
 
   // Keyboard shortcuts (act on the currently selected task / area).
   useEffect(() => {
@@ -227,16 +348,29 @@ export function TreeView({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // Only areas need band-aware drop resolution — tasks drop the same way they always did.
+  function handleTreeDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over || String(active.id) === String(over.id) || !areaMap.has(String(active.id)) || !areaMap.has(String(over.id))) {
+      setDropIndicator(null);
+      return;
+    }
+    setDropIndicator({ id: String(over.id), position: computeDropPosition(event, over.rect) });
+  }
+
   function handleTreeDragEnd(event: DragEndEvent) {
+    const indicator = dropIndicator;
+    setDropIndicator(null);
     if (!canEdit) return;
     const { active, over } = event;
     if (!over) return;
-    const action = resolveDragEnd(String(active.id), String(over.id), {
-      areas,
-      tasksByArea,
-      areaMap,
-      taskById,
-    });
+    const position = indicator && indicator.id === String(over.id) ? indicator.position : "into";
+    const action = resolveDragEnd(
+      String(active.id),
+      String(over.id),
+      { areas, tasksByArea, areaMap, taskById },
+      position,
+    );
     applyDrag(action, (id) => setExpanded((prev) => new Set(prev).add(id)));
   }
 
@@ -285,8 +419,22 @@ export function TreeView({
     setAdding({ parentId });
   }
 
+  function expandAllAreas() {
+    setExpanded(new Set(areas.map((a) => a.id)));
+  }
+
+  function collapseAllAreas() {
+    setExpanded(new Set());
+  }
+
   return (
-    <DndContext sensors={treeSensors} collisionDetection={closestCenter} onDragEnd={handleTreeDragEnd}>
+    <DndContext
+      sensors={treeSensors}
+      collisionDetection={pointerWithin}
+      onDragOver={handleTreeDragOver}
+      onDragEnd={handleTreeDragEnd}
+      onDragCancel={() => setDropIndicator(null)}
+    >
     <div className="flex h-full w-full">
       {/* Sidebar */}
       <div
@@ -296,9 +444,15 @@ export function TreeView({
         <div className="mb-1.5 px-1">
           <input
             value={search}
-            placeholder="Search tasks…"
+            placeholder="Search areas and tasks…"
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setSearch("")}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSearch("");
+              else if (e.key === "Enter") {
+                if (areaMatches[0]) openAreaFromSearch(areaMatches[0]);
+                else if (matches[0]) openTaskFromSearch(matches[0]);
+              }
+            }}
             className="w-full px-2 py-1 outline-none"
             style={{
               fontFamily: "var(--font-sans)",
@@ -312,10 +466,21 @@ export function TreeView({
         </div>
 
         {query ? (
-          <SearchResults roots={roots} matches={matches} onPick={openTaskFromSearch} />
+          <SearchResults
+            roots={roots}
+            areaMatches={areaMatches}
+            matches={matches}
+            onPickArea={openAreaFromSearch}
+            onPick={openTaskFromSearch}
+          />
         ) : (
           <>
-        <AreasHeader onAddRoot={() => setAdding({ parentId: null })} canEdit={canEdit} />
+        <AreasHeader
+          onAddRoot={() => setAdding({ parentId: null })}
+          canEdit={canEdit}
+          onExpandAll={expandAllAreas}
+          onCollapseAll={collapseAllAreas}
+        />
 
           <SortableContext items={roots.map((r) => r.id)} strategy={verticalListSortingStrategy}>
             {roots.map((node) => (
@@ -329,6 +494,7 @@ export function TreeView({
                 adding={adding}
                 tasksByArea={tasksByArea}
                 canEdit={canEdit}
+                dropIndicator={dropIndicator}
                 onToggle={toggle}
                 onSelect={selectArea}
                 onStartRename={setRenamingAreaId}
@@ -460,6 +626,7 @@ interface BranchProps {
   adding: AddingArea | null;
   tasksByArea: Map<string, Task[]>;
   canEdit: boolean;
+  dropIndicator: { id: string; position: DropPosition } | null;
   onToggle: (id: string) => void;
   onSelect: (id: string) => void;
   onStartRename: (id: string) => void;
@@ -470,16 +637,17 @@ interface BranchProps {
 }
 
 function AreaBranch(props: BranchProps) {
-  const { node, depth, expanded, selectedId, renamingAreaId, adding, tasksByArea, canEdit } = props;
+  const { node, depth, expanded, selectedId, renamingAreaId, adding, tasksByArea, canEdit, dropIndicator } = props;
   const [hover, setHover] = useState(false);
   const isExpanded = expanded.has(node.id);
   const hasChildren = node.children.length > 0;
   const selected = selectedId === node.id;
   const counts = countSubtree(node, tasksByArea);
   const renaming = renamingAreaId === node.id;
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: node.id,
   });
+  const indicator = !isDragging && dropIndicator?.id === node.id ? dropIndicator.position : null;
 
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
@@ -495,14 +663,21 @@ function AreaBranch(props: BranchProps) {
           padding: `0 8px 0 ${4 + depth * 16}px`,
           borderRadius: "var(--radius-sm)",
           background:
-            isOver && !isDragging
+            indicator === "into"
               ? "var(--accent-tint)"
               : selected
                 ? "var(--accent-tint-strong)"
                 : hover
                   ? "var(--surface-hover)"
                   : "transparent",
-          boxShadow: isOver && !isDragging ? "inset 0 0 0 1px var(--accent-9)" : "none",
+          boxShadow:
+            indicator === "into"
+              ? "inset 0 0 0 2px var(--accent-9)"
+              : indicator === "before"
+                ? "inset 0 2px 0 0 var(--accent-9)"
+                : indicator === "after"
+                  ? "inset 0 -2px 0 0 var(--accent-9)"
+                  : "none",
           opacity: isDragging ? 0.5 : 1,
         }}
       >

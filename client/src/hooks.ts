@@ -248,8 +248,9 @@ export function useApplyDragAction() {
       case "reorder-areas":
         reorderAreas.mutate(action.orderedIds);
         break;
-      case "reparent-area":
+      case "move-area":
         moveArea.mutate({ id: action.areaId, parentId: action.parentId });
+        reorderAreas.mutate(action.orderedIds);
         if (action.expandId) onExpand?.(action.expandId);
         break;
     }

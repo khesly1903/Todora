@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
+import { Logo } from "../components/primitives";
 import { useGrowAnimation } from "./useGrowAnimation";
 import membersShot from "./screenshots/members.png";
 import treeShot from "./screenshots/tree.png";
@@ -23,10 +24,7 @@ export function LandingPage() {
     <div className="landing-page">
       <header className="nav-edge container">
         <Link className="wordmark" to="/">
-          <svg className="wordmark__mark" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-            <rect x="2" y="2" width="16" height="16" rx="4" />
-            <path d="M6 10.5 L9 13.5 L14.5 6.5" />
-          </svg>
+          <Logo />
           Todora
         </Link>
         <div className="nav-edge__actions">
@@ -49,7 +47,7 @@ export function LandingPage() {
               </p>
             </div>
 
-            <button type="button" className="hero__art" aria-labelledby="grow-caption" onClick={play}>
+            <button type="button" className="hero__art" aria-label="Replay: a task, from not started to done" onClick={play}>
               <svg ref={svgRef} className="grow" viewBox="0 0 220 220" role="img" aria-hidden="true">
                 <rect className="grow__fill grow__fill--not-started" x="30" y="30" width="160" height="160" rx="28" />
                 <rect className="grow__fill grow__fill--cooking" x="30" y="30" width="160" height="160" rx="28" />
@@ -62,7 +60,6 @@ export function LandingPage() {
                 </g>
                 <path className="grow__icon grow__icon--done" pathLength="100" d="M64 116 L98 148 L156 78" />
               </svg>
-              <span className="hero__art-caption" id="grow-caption">Replay: a task, from not started to done</span>
             </button>
           </div>
         </section>
