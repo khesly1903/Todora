@@ -27,6 +27,7 @@ import { DeleteConfirmDialog } from "./Dialog";
 import { TaskInspector } from "./TaskInspector";
 import { SearchResults } from "./SearchResults";
 import type { Area, Task } from "../types";
+import { taskMatchesQuery } from "../utils";
 
 interface ColumnModel {
   parent: AreaNode | null; // null = root column; otherwise the area whose children/tasks are shown
@@ -50,11 +51,13 @@ export function ColumnViewScreen({
   tasks,
   workspaceId,
   canEdit,
+  showAvatars,
 }: {
   areas: Area[];
   tasks: Task[];
   workspaceId: string;
   canEdit: boolean;
+  showAvatars: boolean;
 }) {
   const [maxColumns, setMaxColumns] = useMaxColumns();
   const cycleStatus = useCycleTaskStatus();
@@ -130,7 +133,7 @@ export function ColumnViewScreen({
 
   const query = search.trim().toLowerCase();
   const areaMatches = query ? areas.filter((a) => a.name.toLowerCase().includes(query)) : [];
-  const matches = query ? tasks.filter((t) => t.title.toLowerCase().includes(query)) : [];
+  const matches = query ? tasks.filter((t) => taskMatchesQuery(t, query)) : [];
 
   function openTaskFromSearch(task: Task) {
     const chain = findPath(roots, task.areaId) ?? [];
@@ -190,7 +193,7 @@ export function ColumnViewScreen({
         <div className="flex shrink-0 items-center gap-2">
         <input
           value={search}
-          placeholder="Search areas and tasks…"
+          placeholder="Search areas, tasks, #tags…"
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setSearch("");
@@ -282,6 +285,7 @@ export function ColumnViewScreen({
                   selectedTaskId={selectedTaskId}
                   editingTaskId={editingTaskId}
                   canEdit={canEdit}
+                  showAvatars={showAvatars}
                   onSelect={(task) => setSelectedTaskId(task.id)}
                   onCycleStatus={(task) => cycleStatus.mutate({ task })}
                   onStartEdit={(task) => setEditingTaskId(task.id)}
@@ -305,7 +309,7 @@ export function ColumnViewScreen({
                       placeholder="New sub-area…"
                       onAdd={(name) => createArea.mutate({ name, parentId: col.parent!.id, workspaceId })}
                     />
-                    <AddTaskRow onAdd={(title) => createTask.mutate({ areaId: col.parent!.id, title })} />
+                    <AddTaskRow onAdd={(input) => createTask.mutate({ areaId: col.parent!.id, ...input })} />
                   </>
                 ) : (
                   <AddAreaRow placeholder="New area…" onAdd={(name) => createArea.mutate({ name, parentId: null, workspaceId })} />
@@ -318,6 +322,7 @@ export function ColumnViewScreen({
             key={selectedTask.id}
             task={selectedTask}
             canEdit={canEdit}
+            showAvatars={showAvatars}
             onUpdate={(fields) => updateTask.mutate({ id: selectedTask.id, ...fields })}
             onClose={() => setSelectedTaskId(null)}
             onDelete={() => {

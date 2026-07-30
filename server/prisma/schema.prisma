@@ -8,12 +8,15 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  name         String?
-  passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String   @id @default(cuid())
+  username         String   @unique
+  name             String?
+  passwordHash     String
+  avatarSeed       String?
+  avatarRegenDate  String? // "YYYY-MM-DD" (UTC) of the last avatar regeneration, for the daily limit
+  avatarRegenCount Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   memberships         WorkspaceMember[]
   ownedWorkspaces     Workspace[]  @relation("WorkspaceOwner")

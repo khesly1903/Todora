@@ -92,3 +92,11 @@ authRouter.post("/change-password", requireAuth, async (req, res, next) => {
     next(err);
   }
 });
+
+authRouter.post("/regenerate-avatar", requireAuth, async (req, res, next) => {
+  try {
+    res.json(await authService.regenerateAvatar(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});

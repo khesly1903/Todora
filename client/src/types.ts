@@ -7,6 +7,7 @@ export interface User {
   id: string;
   username: string;
   name: string | null;
+  avatarSeed: string | null;
 }
 
 export interface Workspace {
@@ -16,6 +17,7 @@ export interface Workspace {
   ownerUsername: string;
   ownerName: string | null;
   role: WorkspaceRole;
+  memberCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,7 +42,7 @@ export interface Invitation {
   createdAt: string;
   updatedAt: string;
   workspace?: { name: string };
-  invitedBy?: { username: string; name: string | null };
+  invitedBy?: { username: string; name: string | null; avatarSeed: string | null };
   invitedUser?: User;
 }
 
@@ -101,6 +103,15 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   MEDIUM: "Medium",
   HIGH: "High",
 };
+
+export const MINIMAL_PRIORITY_LABELS: Record<Priority, string> = {
+  NONE: "-",
+  LOW: "!",
+  MEDIUM: "!!",
+  HIGH: "!!!",
+};
+
+export const PRIORITY_ORDER: Priority[] = ["NONE", "LOW", "MEDIUM", "HIGH"];
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
   NONE: "var(--text-tertiary)",

@@ -10,9 +10,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import type { Area, Priority, Task } from "../types";
-import { PRIORITY_COLORS, PRIORITY_LABELS } from "../types";
-
-const PRIORITY_ORDER: Priority[] = ["NONE", "LOW", "MEDIUM", "HIGH"];
+import { PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_ORDER } from "../types";
 import { buildTree, findPath } from "../tree";
 import {
   type DayCell,
@@ -86,17 +84,12 @@ export function CalendarView({ areas, tasks, canEdit }: { areas: Area[]; tasks: 
   }
 
   function addTask(key: string, areaId: string, title: string, priority: Priority) {
-    createTask.mutate(
-      { areaId, title },
-      {
-        onSuccess: (task) =>
-          updateTask.mutate({
-            id: task.id,
-            dueAt: dayKeyToISO(key),
-            ...(priority !== "NONE" ? { priority } : {}),
-          }),
-      },
-    );
+    createTask.mutate({
+      areaId,
+      title,
+      dueAt: dayKeyToISO(key),
+      priority,
+    });
   }
 
   return (

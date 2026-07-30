@@ -1,11 +1,12 @@
 const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: "⌘/Ctrl K", action: "Open command palette" },
-  { keys: "⌘/Ctrl N", action: "New task in the selected area" },
+  { keys: "⌘/Ctrl I", action: "Insert task — focus 'Add a task' input (anywhere)" },
+  { keys: "N / A / I", action: "Focus 'Add a task' input (when not typing)" },
   { keys: "Space", action: "Cycle the selected task's status" },
   { keys: "Enter", action: "Edit the selected task" },
   { keys: "↑ / ↓", action: "Move between tasks" },
   { keys: "Delete / ⌫", action: "Delete the selected task (undoable)" },
-  { keys: "Esc", action: "Clear selection" },
+  { keys: "Esc", action: "Clear selection / blur input" },
   { keys: "Double-click", action: "Rename a task or area" },
   { keys: "Drag", action: "Reorder, move a task into another area, or nest areas" },
 ];

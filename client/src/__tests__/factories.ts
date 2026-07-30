@@ -8,6 +8,7 @@ export function makeUser(over: Partial<User> = {}): User {
     id: `user-${seq}`,
     username: `user${seq}`,
     name: null,
+    avatarSeed: null,
     ...over,
   };
 }
@@ -21,6 +22,7 @@ export function makeWorkspace(over: Partial<Workspace> = {}): Workspace {
     ownerUsername: "user1",
     ownerName: null,
     role: "OWNER",
+    memberCount: 1,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...over,

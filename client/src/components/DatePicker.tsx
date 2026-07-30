@@ -18,10 +18,12 @@ export function DatePicker({
   value,
   onChange,
   placeholder = "Pick a date",
+  compact = false,
 }: {
   value: string | null;
   onChange: (iso: string | null) => void;
   placeholder?: string;
+  compact?: boolean;
 }) {
   const selected = useMemo(() => (value ? new Date(value) : null), [value]);
   const today = useMemo(() => new Date(), []);
@@ -81,23 +83,37 @@ export function DatePicker({
     : placeholder;
 
   return (
-    <div className="flex flex-1 items-center gap-2">
+    <div className={compact ? "inline-flex items-center gap-1" : "flex flex-1 items-center gap-2"}>
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-left"
-        style={{
-          fontFamily: "var(--font-sans)",
-          fontSize: "var(--text-sm)",
-          color: selected ? "var(--text-primary)" : "var(--text-tertiary)",
-          background: "var(--surface-raised)",
-          border: "1px solid var(--border-default)",
-          borderRadius: "var(--radius-sm)",
-        }}
+        className={
+          compact
+            ? "inline-flex cursor-pointer items-center gap-1 border-none bg-transparent px-1.5 py-0.5"
+            : "flex flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-left"
+        }
+        style={
+          compact
+            ? {
+                fontFamily: "var(--font-sans)",
+                fontSize: "var(--text-xs)",
+                color: selected ? "var(--text-primary)" : "var(--text-secondary)",
+                borderRadius: "var(--radius-xs)",
+                background: selected ? "var(--surface-sunken)" : "transparent",
+              }
+            : {
+                fontFamily: "var(--font-sans)",
+                fontSize: "var(--text-sm)",
+                color: selected ? "var(--text-primary)" : "var(--text-tertiary)",
+                background: "var(--surface-raised)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "var(--radius-sm)",
+              }
+        }
       >
         <CalendarGlyph />
-        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
+        <span className={compact ? "whitespace-nowrap" : "flex-1 overflow-hidden text-ellipsis whitespace-nowrap"}>{label}</span>
       </button>
       {selected && (
         <button

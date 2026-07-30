@@ -1,6 +1,7 @@
 import type {
   Area,
   Invitation,
+  Priority,
   Task,
   TaskStatus,
   User,
@@ -74,6 +75,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
+  regenerateAvatar: () => request<User>("/api/auth/regenerate-avatar", { method: "POST" }),
 
   listWorkspaces: () => request<Workspace[]>("/api/workspaces"),
   createWorkspace: (input: { name: string }) =>
@@ -122,7 +124,15 @@ export const api = {
     request<Area>(`/api/areas/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
   deleteArea: (id: string) => request<DeleteAreaResult>(`/api/areas/${id}`, { method: "DELETE" }),
 
-  createTask: (input: { areaId: string; title: string }) =>
+  createTask: (input: {
+    areaId: string;
+    title: string;
+    status?: TaskStatus;
+    priority?: Priority;
+    tags?: string[];
+    dueAt?: string | null;
+    description?: string | null;
+  }) =>
     request<Task>("/api/tasks", { method: "POST", body: JSON.stringify(input) }),
   updateTask: (id: string, input: TaskUpdate) =>
     request<Task>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(input) }),

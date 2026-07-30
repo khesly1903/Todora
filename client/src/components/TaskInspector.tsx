@@ -1,12 +1,11 @@
 import { type KeyboardEvent, useLayoutEffect, useRef, useState } from "react";
-import type { Priority, Task, TaskStatus } from "../types";
-import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_LABELS } from "../types";
+import type { Task, TaskStatus } from "../types";
+import { PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_ORDER, STATUS_LABELS } from "../types";
 import type { TaskUpdate } from "../api";
-import { StatusDot } from "./primitives";
+import { Avatar, StatusDot } from "./primitives";
 import { DatePicker } from "./DatePicker";
 
 const STATUS_ORDER: TaskStatus[] = ["NOT_STARTED", "COOKING", "DONE"];
-const PRIORITY_ORDER: Priority[] = ["NONE", "LOW", "MEDIUM", "HIGH"];
 
 function formatDate(iso: string | null | undefined, withTime = false) {
   if (!iso) return "—";
@@ -33,12 +32,14 @@ function FieldLabel({ children }: { children: string }) {
 export function TaskInspector({
   task,
   canEdit,
+  showAvatars = false,
   onUpdate,
   onClose,
   onDelete,
 }: {
   task: Task;
   canEdit: boolean;
+  showAvatars?: boolean;
   onUpdate: (fields: TaskUpdate) => void;
   onClose: () => void;
   onDelete: () => void;
@@ -304,18 +305,30 @@ export function TaskInspector({
 
       {/* Meta */}
       <div className="mt-auto flex flex-col gap-1.5 pt-2" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-        <div className="flex justify-between" style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
+        <div className="flex items-center justify-between" style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
           <span>Created</span>
-          <span>
+          <span className="flex items-center gap-1.5">
             {formatDate(task.createdAt)}
-            {task.createdBy && ` by ${task.createdBy.name ?? task.createdBy.username}`}
+            {task.createdBy && (
+              <>
+                by
+                {showAvatars && <Avatar user={task.createdBy} size={14} />}
+                {task.createdBy.name ?? task.createdBy.username}
+              </>
+            )}
           </span>
         </div>
-        <div className="flex justify-between" style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
+        <div className="flex items-center justify-between" style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
           <span>Completed</span>
-          <span>
+          <span className="flex items-center gap-1.5">
             {task.completedAt ? formatDate(task.completedAt, true) : "—"}
-            {task.completedAt && task.completedBy && ` by ${task.completedBy.name ?? task.completedBy.username}`}
+            {task.completedAt && task.completedBy && (
+              <>
+                by
+                {showAvatars && <Avatar user={task.completedBy} size={14} />}
+                {task.completedBy.name ?? task.completedBy.username}
+              </>
+            )}
           </span>
         </div>
         {canEdit && (

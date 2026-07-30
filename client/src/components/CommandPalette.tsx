@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Area, Task } from "../types";
 import { buildTree, findPath } from "../tree";
 import { FolderIcon, StatusDot } from "./primitives";
+import { taskMatchesQuery } from "../utils";
 
 export interface Command {
   id: string;
@@ -67,7 +68,7 @@ export function CommandPalette({
       : [];
     const taskItems = q
       ? tasks
-          .filter((t) => t.title.toLowerCase().includes(q))
+          .filter((t) => taskMatchesQuery(t, q))
           .slice(0, 12)
           .map((task) => ({
             kind: "task" as const,
@@ -111,7 +112,7 @@ export function CommandPalette({
         <input
           ref={inputRef}
           value={query}
-          placeholder="Search areas, tasks, or run a command…"
+          placeholder="Search areas, tasks, #tags, or run a command…"
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {

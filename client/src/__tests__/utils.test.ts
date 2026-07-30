@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatDueShort, isOverdue } from "../utils";
+import { formatDueShort, isOverdue, taskMatchesQuery } from "../utils";
 import { makeTask } from "./factories";
 
 describe("isOverdue", () => {
@@ -36,5 +36,27 @@ describe("formatDueShort", () => {
     const label = formatDueShort("2026-07-20T12:00:00.000Z");
     expect(label).toMatch(/20/);
     expect(label.length).toBeLessThanOrEqual(8);
+  });
+});
+
+describe("taskMatchesQuery", () => {
+  it("matches tasks by title", () => {
+    const task = makeTask({ title: "Write documentation" });
+    expect(taskMatchesQuery(task, "doc")).toBe(true);
+    expect(taskMatchesQuery(task, "xyz")).toBe(false);
+  });
+
+  it("matches tasks by tags with or without # prefix", () => {
+    const task = makeTask({ title: "Fix bug", tags: ["urgent", "frontend"] });
+    expect(taskMatchesQuery(task, "urg")).toBe(true);
+    expect(taskMatchesQuery(task, "#urgent")).toBe(true);
+    expect(taskMatchesQuery(task, "frontend")).toBe(true);
+    expect(taskMatchesQuery(task, "#backend")).toBe(false);
+  });
+
+  it("matches tasks by description", () => {
+    const task = makeTask({ title: "Deploy app", description: "Use Coolify for database" });
+    expect(taskMatchesQuery(task, "coolify")).toBe(true);
+    expect(taskMatchesQuery(task, "aws")).toBe(false);
   });
 });

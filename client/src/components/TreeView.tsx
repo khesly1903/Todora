@@ -153,6 +153,7 @@ import {
 } from "../hooks";
 import { useUndo } from "../undo";
 import {
+  Avatar,
   Breadcrumb,
   Button,
   ChevronRight,
@@ -163,11 +164,12 @@ import {
   PlusIcon,
   StatusDot,
 } from "./primitives";
-import { isOverdue } from "../utils";
+import { isOverdue, taskMatchesQuery } from "../utils";
 import { ROOT_DROP_ID, resolveDragEnd, type DropPosition } from "../dnd";
 import { DeleteConfirmDialog } from "./Dialog";
 import { TaskInspector } from "./TaskInspector";
 import { SearchResults } from "./SearchResults";
+import { AddTaskBar, type CreateTaskInput } from "./AddTaskBar";
 
 type AddingArea = { parentId: string | null };
 
@@ -211,6 +213,7 @@ export function TreeView({
   tasks,
   workspaceId,
   canEdit,
+  showAvatars,
   focusTaskId,
   onFocusHandled,
   focusAreaId,
@@ -220,6 +223,7 @@ export function TreeView({
   tasks: Task[];
   workspaceId: string;
   canEdit: boolean;
+  showAvatars: boolean;
   focusTaskId?: string | null;
   onFocusHandled?: () => void;
   focusAreaId?: string | null;
@@ -251,7 +255,7 @@ export function TreeView({
 
   const query = search.trim().toLowerCase();
   const areaMatches = query ? areas.filter((a) => a.name.toLowerCase().includes(query)) : [];
-  const matches = query ? tasks.filter((t) => t.title.toLowerCase().includes(query)) : [];
+  const matches = query ? tasks.filter((t) => taskMatchesQuery(t, query)) : [];
 
   function openTaskFromSearch(task: Task) {
     openArea(task.areaId);
@@ -302,13 +306,6 @@ export function TreeView({
       const typing =
         target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
-        if (selectedId) {
-          e.preventDefault();
-          document.querySelector<HTMLInputElement>("[data-add-task]")?.focus();
-        }
-        return;
-      }
       if (typing || renamingAreaId) return;
       if (!selectedTask) return;
 
@@ -444,7 +441,7 @@ export function TreeView({
         <div className="mb-1.5 px-1">
           <input
             value={search}
-            placeholder="Search areas and tasks…"
+            placeholder="Search areas, tasks, #tags…"
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Escape") setSearch("");
@@ -560,6 +557,7 @@ export function TreeView({
             }}
             counts={countSubtree(selectedNode, tasksByArea)}
             tasks={tasksByArea.get(selectedNode.id) ?? []}
+            showAvatars={showAvatars}
             childAreas={selectedNode.children}
             tasksByArea={tasksByArea}
             onOpenArea={openArea}
@@ -567,7 +565,7 @@ export function TreeView({
             onSelectTask={setSelectedTaskId}
             editingTaskId={editingTaskId}
             onSetEditingTask={setEditingTaskId}
-            onAddTask={(title) => createTask.mutate({ areaId: selectedNode.id, title })}
+            onAddTask={(input) => createTask.mutate({ areaId: selectedNode.id, ...input })}
             onCycleStatus={(task) => cycleStatus.mutate({ task })}
             onRenameTask={(id, title) => renameTask.mutate({ id, title })}
             onDeleteTask={(task) => {
@@ -589,6 +587,7 @@ export function TreeView({
           key={selectedTask.id}
           task={selectedTask}
           canEdit={canEdit}
+          showAvatars={showAvatars}
           onUpdate={(fields) => updateTask.mutate({ id: selectedTask.id, ...fields })}
           onClose={() => setSelectedTaskId(null)}
           onDelete={() => {
@@ -767,6 +766,7 @@ function TaskPanel({
   onNavigate,
   counts,
   tasks,
+  showAvatars,
   childAreas,
   tasksByArea,
   onOpenArea,
@@ -787,6 +787,7 @@ function TaskPanel({
   onNavigate: (index: number) => void;
   counts: { done: number; total: number };
   tasks: Task[];
+  showAvatars: boolean;
   childAreas: AreaNode[];
   tasksByArea: Map<string, Task[]>;
   onOpenArea: (id: string) => void;
@@ -794,7 +795,7 @@ function TaskPanel({
   onSelectTask: (id: string) => void;
   editingTaskId: string | null;
   onSetEditingTask: (id: string | null) => void;
-  onAddTask: (title: string) => void;
+  onAddTask: (input: CreateTaskInput) => void;
   onCycleStatus: (task: Task) => void;
   onRenameTask: (id: string, title: string) => void;
   onDeleteTask: (task: Task) => void;
@@ -835,17 +836,14 @@ function TaskPanel({
         </nav>
         {canEdit && (
           <div
-            className="flex h-8 items-center gap-2 px-2.5"
+            className="flex flex-col gap-1.5 px-2.5 py-1.5"
             style={{
               border: "1px solid var(--border-default)",
               borderRadius: "var(--radius-md)",
               background: "var(--surface-raised)",
             }}
           >
-            <span style={{ color: "var(--text-tertiary)", display: "inline-flex" }}>
-              <PlusIcon />
-            </span>
-            <AddTaskInput onAdd={onAddTask} />
+            <AddTaskBar onAdd={onAddTask} />
           </div>
         )}
       </div>
@@ -863,6 +861,7 @@ function TaskPanel({
               selected={selectedTaskId === task.id}
               editing={editingTaskId === task.id}
               canEdit={canEdit}
+              showAvatar={showAvatars}
               onSelect={() => onSelectTask(task.id)}
               onCycleStatus={() => onCycleStatus(task)}
               onStartEdit={() => setEditingTaskId(task.id)}
@@ -928,6 +927,7 @@ function TaskPanel({
                     selected={selectedTaskId === task.id}
                     editing={editingTaskId === task.id}
                     canEdit={canEdit}
+                    showAvatar={showAvatars}
                     onSelect={() => onSelectTask(task.id)}
                     onCycleStatus={() => onCycleStatus(task)}
                     onStartEdit={() => setEditingTaskId(task.id)}
@@ -1025,32 +1025,13 @@ function SortableTaskRow(props: Omit<Parameters<typeof TaskRow>[0], "dnd">) {
   return <TaskRow {...props} dnd={dnd} />;
 }
 
-function AddTaskInput({ onAdd }: { onAdd: (title: string) => void }) {
-  const [value, setValue] = useState("");
-  return (
-    <input
-      data-add-task
-      value={value}
-      placeholder="Add a task…"
-      onChange={(e) => setValue(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && value.trim()) {
-          onAdd(value.trim());
-          setValue("");
-        }
-        if (e.key === "Escape") e.currentTarget.blur();
-      }}
-      className="min-w-0 flex-1 border-none bg-transparent p-0 outline-none"
-      style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-sm)", color: "var(--text-primary)" }}
-    />
-  );
-}
 
 function TaskRow({
   task,
   selected,
   editing,
   canEdit,
+  showAvatar,
   onSelect,
   onCycleStatus,
   onStartEdit,
@@ -1063,6 +1044,7 @@ function TaskRow({
   selected: boolean;
   editing: boolean;
   canEdit: boolean;
+  showAvatar: boolean;
   onSelect: () => void;
   onCycleStatus: () => void;
   onStartEdit: () => void;
@@ -1099,6 +1081,7 @@ function TaskRow({
         ...(dnd?.style ?? {}),
       }}
     >
+      {showAvatar && task.createdBy && <Avatar user={task.createdBy} size={16} />}
       <StatusDot status={task.status} onClick={canEdit ? onCycleStatus : undefined} />
       {task.priority !== "NONE" && (
         <span

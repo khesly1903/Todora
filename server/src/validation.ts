@@ -45,6 +45,11 @@ export const updateAreaSchema = z.object({
 export const createTaskSchema = z.object({
   areaId: z.string(),
   title: z.string().trim().min(1).max(500),
+  status: taskStatusSchema.optional(),
+  priority: prioritySchema.optional(),
+  tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
+  dueAt: z.coerce.date().nullable().optional(),
+  description: z.string().max(5000).nullable().optional(),
 });
 
 export const updateTaskSchema = z.object({

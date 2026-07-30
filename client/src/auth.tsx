@@ -10,6 +10,7 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   updateProfile: (name: string) => Promise<void>;
+  regenerateAvatar: () => Promise<void>;
   authError: string | null;
   clearAuthError: () => void;
 }
@@ -46,6 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: (name: string) => api.updateProfile(name),
     meta: { silent: true },
   });
+  const regenerateAvatarMutation = useMutation({
+    mutationFn: api.regenerateAvatar,
+    meta: { silent: true },
+  });
 
   async function register(username: string, password: string, name: string) {
     const user = await registerMutation.mutateAsync({ username, password, name });
@@ -59,6 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function updateProfile(name: string) {
     const user = await updateProfileMutation.mutateAsync(name);
+    queryClient.setQueryData(["auth", "me"], user);
+  }
+
+  async function regenerateAvatar() {
+    const user = await regenerateAvatarMutation.mutateAsync();
     queryClient.setQueryData(["auth", "me"], user);
   }
 
@@ -84,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     updateProfile,
+    regenerateAvatar,
     authError,
     clearAuthError,
   };

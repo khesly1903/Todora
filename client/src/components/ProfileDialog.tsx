@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../auth";
 import { useChangePassword } from "../hooks";
 import { ApiError } from "../api";
+import { avatarUrl } from "../avatar";
 import { Button, TextField } from "./primitives";
 
 const PASSWORD_PATTERN = /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$/;
@@ -18,6 +19,51 @@ function CloseIcon() {
 
 function errorMessage(e: unknown, fallback: string): string {
   return e instanceof ApiError || e instanceof Error ? e.message : fallback;
+}
+
+function AvatarSection() {
+  const { user, regenerateAvatar } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function regenerate() {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await regenerateAvatar();
+    } catch (e) {
+      setError(errorMessage(e, "Could not get a new avatar"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!user) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div style={{ fontSize: "var(--text-2xs)", fontWeight: "var(--weight-semibold)", color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        Avatar
+      </div>
+      <div className="flex items-center gap-3">
+        <img
+          src={avatarUrl(user)}
+          width={48}
+          height={48}
+          alt=""
+          style={{ borderRadius: "var(--radius-full)", background: "var(--surface-sunken)" }}
+        />
+        <Button variant="secondary" onClick={regenerate} disabled={loading}>
+          New avatar
+        </Button>
+      </div>
+      <div style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
+        Visible to others in shared workspaces. Limited to 2 new avatars a day.
+      </div>
+      {error && <div style={{ fontSize: "var(--text-xs)", color: "var(--status-not-started-text)" }}>{error}</div>}
+    </div>
+  );
 }
 
 function NameSection() {
@@ -210,6 +256,8 @@ export function ProfileDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
+          <AvatarSection />
+          <div className="my-4" style={{ borderTop: "1px solid var(--border-subtle)" }} />
           <NameSection />
           <div className="my-4" style={{ borderTop: "1px solid var(--border-subtle)" }} />
           <PasswordSection />

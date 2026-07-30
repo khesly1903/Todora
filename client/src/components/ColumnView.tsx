@@ -4,9 +4,10 @@ import { CSS } from "@dnd-kit/utilities";
 import type { Task } from "../types";
 import type { AreaNode } from "../tree";
 import { countSubtree, splitActiveAndCompleted } from "../tree";
-import { ChevronRight, ChevronToggle, DueBadge, FolderIcon, InlineInput, PlusIcon, StatusDot } from "./primitives";
+import { Avatar, ChevronRight, ChevronToggle, DueBadge, FolderIcon, InlineInput, StatusDot } from "./primitives";
 import { isOverdue } from "../utils";
 import { PRIORITY_COLORS } from "../types";
+import { AddTaskBar, type CreateTaskInput } from "./AddTaskBar";
 
 export function Column({ children, dropRef }: { children: ReactNode; dropRef?: (el: HTMLElement | null) => void }) {
   return (
@@ -142,6 +143,7 @@ export function TaskColumnItem({
   selected,
   editing,
   canEdit,
+  showAvatar = false,
   draggable = true,
   onSelect,
   onCycleStatus,
@@ -154,6 +156,7 @@ export function TaskColumnItem({
   selected: boolean;
   editing: boolean;
   canEdit: boolean;
+  showAvatar?: boolean;
   /** Completed tasks render read-only, outside the sortable set — same as Tree view. */
   draggable?: boolean;
   onSelect: () => void;
@@ -190,6 +193,7 @@ export function TaskColumnItem({
       className="flex h-[26px] cursor-default items-center gap-2 px-2 hover:bg-[var(--surface-hover)]"
       style={{ borderRadius: "var(--radius-sm)", background: selected ? "var(--accent-tint-strong)" : undefined, ...dnd.style }}
     >
+      {showAvatar && task.createdBy && <Avatar user={task.createdBy} size={16} />}
       <StatusDot status={task.status} onClick={canEdit ? onCycleStatus : undefined} />
       {task.priority !== "NONE" && (
         <span
@@ -240,6 +244,7 @@ export function TaskColumnList({
   selectedTaskId,
   editingTaskId,
   canEdit,
+  showAvatars = false,
   onSelect,
   onCycleStatus,
   onStartEdit,
@@ -251,6 +256,7 @@ export function TaskColumnList({
   selectedTaskId: string | null;
   editingTaskId: string | null;
   canEdit: boolean;
+  showAvatars?: boolean;
   onSelect: (task: Task) => void;
   onCycleStatus: (task: Task) => void;
   onStartEdit: (task: Task) => void;
@@ -270,6 +276,7 @@ export function TaskColumnList({
         selected={selectedTaskId === task.id}
         editing={editingTaskId === task.id}
         canEdit={canEdit}
+        showAvatar={showAvatars}
         draggable={draggable}
         onSelect={() => onSelect(task)}
         onCycleStatus={() => onCycleStatus(task)}
@@ -330,26 +337,10 @@ export function TaskColumnList({
   );
 }
 
-export function AddTaskRow({ onAdd }: { onAdd: (title: string) => void }) {
-  const [value, setValue] = useState("");
+export function AddTaskRow({ onAdd }: { onAdd: (input: CreateTaskInput) => void }) {
   return (
-    <div className="mt-1 flex h-[26px] items-center gap-2 px-2">
-      <span className="inline-flex" style={{ color: "var(--text-tertiary)", opacity: 0.45 }}>
-        <PlusIcon />
-      </span>
-      <input
-        value={value}
-        placeholder="Add task…"
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && value.trim()) {
-            onAdd(value.trim());
-            setValue("");
-          }
-        }}
-        className="min-w-0 flex-1 border-none bg-transparent p-0 outline-none"
-        style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-sm)", color: "var(--text-primary)" }}
-      />
+    <div className="mt-1 px-2">
+      <AddTaskBar onAdd={onAdd} placeholder="Add task…" />
     </div>
   );
 }

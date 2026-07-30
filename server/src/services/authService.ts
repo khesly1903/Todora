@@ -1,7 +1,10 @@
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db.js";
 import { isValidName, isValidPassword, isValidUsername } from "./authValidation.js";
+
+const AVATAR_REGENS_PER_DAY = 2;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is required");
@@ -45,6 +48,12 @@ export class IncorrectPasswordError extends Error {
   }
 }
 
+export class AvatarLimitError extends Error {
+  constructor() {
+    super(`You can only get a new avatar ${AVATAR_REGENS_PER_DAY} times a day — try again tomorrow`);
+  }
+}
+
 export function signToken(userId: string): string {
   return jwt.sign({ sub: userId }, JWT_SECRET!, { expiresIn: TOKEN_TTL });
 }
@@ -58,8 +67,8 @@ export function verifyToken(token: string): string | null {
   }
 }
 
-function toPublicUser(user: { id: string; username: string; name: string | null }) {
-  return { id: user.id, username: user.username, name: user.name };
+function toPublicUser(user: { id: string; username: string; name: string | null; avatarSeed: string | null }) {
+  return { id: user.id, username: user.username, name: user.name, avatarSeed: user.avatarSeed };
 }
 
 /** Creates a user plus a personal workspace they own and belong to as OWNER. */
@@ -72,9 +81,10 @@ export async function register(username: string, password: string, name: string)
   if (existing) throw new UsernameTakenError();
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+  const avatarSeed = crypto.randomUUID();
 
   const user = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({ data: { username, name: name.trim(), passwordHash } });
+    const created = await tx.user.create({ data: { username, name: name.trim(), passwordHash, avatarSeed } });
     const workspace = await tx.workspace.create({
       data: { name: "My Workspace", ownerId: created.id },
     });
@@ -114,4 +124,20 @@ export async function changePassword(userId: string, currentPassword: string, ne
   if (!isValidPassword(newPassword)) throw new WeakPasswordError();
   const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
   await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+}
+
+/** Assigns a new random avatar, capped at {@link AVATAR_REGENS_PER_DAY} per UTC calendar day. */
+export async function regenerateAvatar(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new InvalidCredentialsError();
+
+  const today = new Date().toISOString().slice(0, 10);
+  const usedToday = user.avatarRegenDate === today ? user.avatarRegenCount : 0;
+  if (usedToday >= AVATAR_REGENS_PER_DAY) throw new AvatarLimitError();
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { avatarSeed: crypto.randomUUID(), avatarRegenDate: today, avatarRegenCount: usedToday + 1 },
+  });
+  return toPublicUser(updated);
 }

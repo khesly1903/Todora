@@ -1,10 +1,10 @@
-import type { TaskStatus } from "@prisma/client";
+import type { Priority, TaskStatus } from "@prisma/client";
 import { prisma } from "../db.js";
 import { completedAtFor, completedByFor } from "./hierarchy.js";
 import { assertEditor, assertMember, workspaceIdForArea, workspaceIdForTask } from "./accessService.js";
 import { CrossWorkspaceError } from "./areaService.js";
 
-const USER_SELECT = { select: { id: true, username: true, name: true } };
+const USER_SELECT = { select: { id: true, username: true, name: true, avatarSeed: true } };
 const TASK_INCLUDE = { createdBy: USER_SELECT, completedBy: USER_SELECT };
 
 export async function listTasks(userId: string, workspaceId: string) {
@@ -16,7 +16,18 @@ export async function listTasks(userId: string, workspaceId: string) {
   });
 }
 
-export async function createTask(userId: string, input: { areaId: string; title: string }) {
+export async function createTask(
+  userId: string,
+  input: {
+    areaId: string;
+    title: string;
+    status?: TaskStatus;
+    priority?: Priority;
+    tags?: string[];
+    dueAt?: Date | null;
+    description?: string | null;
+  },
+) {
   const workspaceId = await workspaceIdForArea(input.areaId);
   await assertEditor(userId, workspaceId);
   const last = await prisma.task.findFirst({
@@ -27,6 +38,13 @@ export async function createTask(userId: string, input: { areaId: string; title:
     data: {
       areaId: input.areaId,
       title: input.title,
+      status: input.status,
+      priority: input.priority,
+      tags: input.tags,
+      dueAt: input.dueAt,
+      description: input.description,
+      completedAt: input.status === "DONE" ? new Date() : undefined,
+      completedById: input.status === "DONE" ? userId : undefined,
       sortOrder: (last?.sortOrder ?? -1) + 1,
       createdById: userId,
     },

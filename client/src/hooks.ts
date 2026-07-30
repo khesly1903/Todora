@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type TaskUpdate } from "./api";
-import type { Area, Task, TaskStatus, Workspace, WorkspaceRole } from "./types";
+import type { Area, Priority, Task, TaskStatus, Workspace, WorkspaceRole } from "./types";
 import { NEXT_STATUS } from "./types";
 import { reorderByIds } from "./reorder";
 import type { DragAction } from "./dnd";
@@ -112,7 +112,15 @@ export function useDeleteArea() {
 export function useCreateTask() {
   const invalidate = useInvalidateTasks();
   return useMutation({
-    mutationFn: (input: { areaId: string; title: string }) => api.createTask(input),
+    mutationFn: (input: {
+      areaId: string;
+      title: string;
+      status?: TaskStatus;
+      priority?: Priority;
+      tags?: string[];
+      dueAt?: string | null;
+      description?: string | null;
+    }) => api.createTask(input),
     onSuccess: invalidate,
   });
 }

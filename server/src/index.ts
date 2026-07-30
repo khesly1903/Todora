@@ -14,6 +14,7 @@ import { CrossWorkspaceError, CycleError } from "./services/areaService.js";
 import { LastWorkspaceError } from "./services/workspaceService.js";
 import { NotAuthorizedError } from "./services/accessService.js";
 import {
+  AvatarLimitError,
   IncorrectPasswordError,
   InvalidCredentialsError,
   InvalidNameError,
@@ -75,6 +76,9 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
   if (err instanceof InvalidCredentialsError || err instanceof IncorrectPasswordError) {
     return res.status(401).json({ error: err.message });
+  }
+  if (err instanceof AvatarLimitError) {
+    return res.status(429).json({ error: err.message });
   }
   if (err instanceof NotAuthorizedError) {
     return res.status(403).json({ error: err.message });

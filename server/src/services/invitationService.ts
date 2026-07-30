@@ -33,7 +33,7 @@ export class CannotModifyOwnerError extends Error {
 }
 
 export async function lookupUser(username: string) {
-  const user = await prisma.user.findUnique({ where: { username }, select: { id: true, username: true, name: true } });
+  const user = await prisma.user.findUnique({ where: { username }, select: { id: true, username: true, name: true, avatarSeed: true } });
   if (!user) throw new UserNotFoundError();
   return user;
 }
@@ -73,7 +73,7 @@ export function listMyInvitations(userId: string) {
     orderBy: { createdAt: "desc" },
     include: {
       workspace: { select: { name: true } },
-      invitedBy: { select: { username: true, name: true } },
+      invitedBy: { select: { username: true, name: true, avatarSeed: true } },
     },
   });
 }
@@ -112,12 +112,12 @@ export async function listMembers(requesterId: string, workspaceId: string) {
   const [members, pendingInvitations] = await Promise.all([
     prisma.workspaceMember.findMany({
       where: { workspaceId },
-      include: { user: { select: { id: true, username: true, name: true } } },
+      include: { user: { select: { id: true, username: true, name: true, avatarSeed: true } } },
       orderBy: { createdAt: "asc" },
     }),
     prisma.invitation.findMany({
       where: { workspaceId, status: "PENDING" },
-      include: { invitedUser: { select: { id: true, username: true, name: true } } },
+      include: { invitedUser: { select: { id: true, username: true, name: true, avatarSeed: true } } },
     }),
   ]);
   return { members, pendingInvitations };

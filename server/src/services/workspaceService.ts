@@ -12,7 +12,14 @@ export async function listWorkspaces(userId: string) {
   const memberships = await prisma.workspaceMember.findMany({
     where: { userId },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    include: { workspace: { include: { owner: { select: { username: true, name: true } } } } },
+    include: {
+      workspace: {
+        include: {
+          owner: { select: { username: true, name: true } },
+          _count: { select: { members: true } },
+        },
+      },
+    },
   });
   return memberships.map((m) => ({
     id: m.workspace.id,
@@ -21,6 +28,7 @@ export async function listWorkspaces(userId: string) {
     ownerUsername: m.workspace.owner.username,
     ownerName: m.workspace.owner.name,
     role: m.role,
+    memberCount: m.workspace._count.members,
     createdAt: m.workspace.createdAt,
     updatedAt: m.workspace.updatedAt,
   }));

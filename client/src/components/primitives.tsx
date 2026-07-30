@@ -2,6 +2,7 @@ import { type KeyboardEvent, type ReactNode, useState } from "react";
 import type { TaskStatus } from "../types";
 import { STATUS_LABELS } from "../types";
 import { formatDueShort } from "../utils";
+import { avatarUrl } from "../avatar";
 import logoUrl from "../assets/logo.png";
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
@@ -81,6 +82,27 @@ export function IconButton({
 /** Todora brand mark. Black monochrome icon; inverted to white in dark theme via .todora-logo. */
 export function Logo() {
   return <img className="todora-logo" src={logoUrl} width={24} height={24} alt="Todora" />;
+}
+
+/** Small round DiceBear avatar for a user — used wherever "who did this" matters in shared workspaces. */
+export function Avatar({
+  user,
+  size = 16,
+}: {
+  user: { id: string; username: string; name: string | null; avatarSeed: string | null };
+  size?: number;
+}) {
+  return (
+    <img
+      src={avatarUrl(user)}
+      width={size}
+      height={size}
+      alt=""
+      title={user.name ?? user.username}
+      className="shrink-0"
+      style={{ borderRadius: "var(--radius-full)", background: "var(--surface-sunken)" }}
+    />
+  );
 }
 
 export function FolderIcon() {
@@ -423,7 +445,7 @@ export function InlineInput({
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKey}
       onBlur={() => onSubmit(value)}
-      className="min-w-0 flex-1 border-none bg-transparent p-0"
+      className="min-w-0 flex-1 border-none bg-transparent p-0 outline-none focus:outline-none"
       style={{
         fontFamily: "var(--font-sans)",
         fontSize: "var(--text-sm)",

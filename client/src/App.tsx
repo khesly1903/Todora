@@ -273,6 +273,8 @@ function AuthedApp() {
     workspaceId && workspaces.some((w) => w.id === workspaceId) ? workspaceId : null;
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) ?? null;
   const canEdit = canEditRole(activeWorkspace?.role);
+  // Avatars only add value once a workspace has more than one member.
+  const showAvatars = (activeWorkspace?.memberCount ?? 1) > 1;
 
   const areasQuery = useAreas(activeWorkspaceId);
   const tasksQuery = useTasks(activeWorkspaceId);
@@ -290,12 +292,40 @@ function AuthedApp() {
     workspacesQuery.isLoading || (!!activeWorkspaceId && (areasQuery.isLoading || tasksQuery.isLoading));
   const error = workspacesQuery.isError || areasQuery.isError || tasksQuery.isError;
 
-  // Cmd/Ctrl+K toggles the command palette.
+  // Global keyboard shortcuts:
+  // - Cmd/Ctrl+K: Toggle command palette
+  // - Cmd/Ctrl+I (Insert task) or Cmd/Ctrl+N: Focus Add Task input
+  // - C / N / A / I (when not typing): Focus Add Task input
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((o) => !o);
+        return;
+      }
+
+      const target = e.target as HTMLElement;
+      const typing =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === "i" || e.key.toLowerCase() === "n")) {
+        e.preventDefault();
+        const inputs = document.querySelectorAll<HTMLInputElement>("[data-add-task]");
+        if (inputs.length > 0) {
+          inputs[inputs.length - 1]?.focus();
+        }
+        return;
+      }
+
+      if (!typing && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        const k = e.key.toLowerCase();
+        if (k === "c" || k === "n" || k === "a" || k === "i") {
+          e.preventDefault();
+          const inputs = document.querySelectorAll<HTMLInputElement>("[data-add-task]");
+          if (inputs.length > 0) {
+            inputs[inputs.length - 1]?.focus();
+          }
+        }
       }
     }
     window.addEventListener("keydown", onKey);
@@ -322,6 +352,17 @@ function AuthedApp() {
     () => [
       ...(canEdit
         ? [
+            {
+              id: "new-task",
+              label: "New task / Add task",
+              hint: "⌘ I",
+              run: () => {
+                const inputs = document.querySelectorAll<HTMLInputElement>("[data-add-task]");
+                if (inputs.length > 0) {
+                  inputs[inputs.length - 1]?.focus();
+                }
+              },
+            },
             {
               id: "new-area",
               label: "New area",
@@ -463,13 +504,20 @@ function AuthedApp() {
             tasks={tasks}
             workspaceId={activeWorkspaceId}
             canEdit={canEdit}
+            showAvatars={showAvatars}
             focusTaskId={focusTaskId}
             onFocusHandled={() => setFocusTaskId(null)}
             focusAreaId={focusAreaId}
             onAreaFocusHandled={() => setFocusAreaId(null)}
           />
         ) : view === "columns" ? (
-          <ColumnViewScreen areas={areas} tasks={tasks} workspaceId={activeWorkspaceId} canEdit={canEdit} />
+          <ColumnViewScreen
+            areas={areas}
+            tasks={tasks}
+            workspaceId={activeWorkspaceId}
+            canEdit={canEdit}
+            showAvatars={showAvatars}
+          />
         ) : (
           <CalendarView areas={areas} tasks={tasks} canEdit={canEdit} />
         )}
