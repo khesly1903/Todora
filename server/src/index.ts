@@ -37,8 +37,35 @@ const app = express();
 // site make authenticated requests using the visitor's session cookie. The app
 // is same-origin in normal use (Vite proxies /api to this server), so only the
 // dev client origin needs cross-origin + credentialed access.
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+const ALLOWED_ORIGINS = [
+  process.env.CLIENT_ORIGIN,
+  "http://localhost:5173",
+  "http://app.localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://app.127.0.0.1:5173",
+  "https://todora.xyz",
+  "https://www.todora.xyz",
+  "https://app.todora.xyz",
+].filter(Boolean) as string[];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        ALLOWED_ORIGINS.includes(origin) ||
+        origin.includes("localhost") ||
+        origin.includes("127.0.0.1") ||
+        origin.endsWith("todora.xyz")
+      ) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 

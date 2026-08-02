@@ -44,7 +44,7 @@ export const updateAreaSchema = z.object({
 
 export const createTaskSchema = z.object({
   areaId: z.string(),
-  title: z.string().trim().min(1).max(500),
+  title: z.string().trim().min(1).max(5000),
   status: taskStatusSchema.optional(),
   priority: prioritySchema.optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
@@ -53,7 +53,7 @@ export const createTaskSchema = z.object({
 });
 
 export const updateTaskSchema = z.object({
-  title: z.string().trim().min(1).max(500).optional(),
+  title: z.string().trim().min(1).max(5000).optional(),
   description: z.string().max(5000).nullable().optional(),
   status: taskStatusSchema.optional(),
   priority: prioritySchema.optional(),
@@ -68,7 +68,7 @@ export const reorderSchema = z.object({
 });
 
 const importTaskSchema = z.object({
-  title: z.string().trim().min(1).max(500),
+  title: z.string().trim().min(1).max(5000),
   status: taskStatusSchema.optional(),
   priority: prioritySchema.optional(),
   tags: z.array(z.string()).optional(),

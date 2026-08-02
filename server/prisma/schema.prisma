@@ -24,6 +24,7 @@ model User {
   receivedInvitations Invitation[] @relation("InvitedUser")
   createdTasks        Task[]       @relation("TaskCreatedBy")
   completedTasks      Task[]       @relation("TaskCompletedBy")
+  updatedTasks        Task[]       @relation("TaskUpdatedBy")
 }
 
 enum WorkspaceRole {
@@ -129,10 +130,13 @@ model Task {
   createdBy     User?      @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   completedById String?
   completedBy   User?      @relation("TaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  updatedById   String?
+  updatedBy     User?      @relation("TaskUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
   @@index([areaId])
   @@index([createdById])
   @@index([completedById])
+  @@index([updatedById])
 }

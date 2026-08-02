@@ -5,7 +5,7 @@ import { assertEditor, assertMember, workspaceIdForArea, workspaceIdForTask } fr
 import { CrossWorkspaceError } from "./areaService.js";
 
 const USER_SELECT = { select: { id: true, username: true, name: true, avatarSeed: true } };
-const TASK_INCLUDE = { createdBy: USER_SELECT, completedBy: USER_SELECT };
+const TASK_INCLUDE = { createdBy: USER_SELECT, completedBy: USER_SELECT, updatedBy: USER_SELECT };
 
 export async function listTasks(userId: string, workspaceId: string) {
   await assertMember(userId, workspaceId);
@@ -58,7 +58,7 @@ export async function reorderTasks(userId: string, orderedIds: string[]) {
   await assertEditor(userId, workspaceId);
   await prisma.$transaction(
     orderedIds.map((id, index) =>
-      prisma.task.update({ where: { id, area: { workspaceId } }, data: { sortOrder: index } }),
+      prisma.task.update({ where: { id, area: { workspaceId } }, data: { sortOrder: index, updatedById: userId } }),
     ),
   );
 }
@@ -83,7 +83,7 @@ export async function updateTask(
     const targetWorkspaceId = await workspaceIdForArea(input.areaId);
     if (targetWorkspaceId !== workspaceId) throw new CrossWorkspaceError();
   }
-  const data: Record<string, unknown> = { ...input };
+  const data: Record<string, unknown> = { ...input, updatedById: userId };
   if (input.status !== undefined) {
     data.completedAt = completedAtFor(input.status);
     data.completedById = completedByFor(input.status, userId);

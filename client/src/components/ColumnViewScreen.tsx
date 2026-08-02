@@ -2,18 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
-  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import {
   useApplyDragAction,
   useCreateArea,
   useCreateTask,
   useCycleTaskStatus,
+  useIsMobile,
   useRenameArea,
   useRenameTask,
   useUpdateTask,
@@ -21,8 +21,9 @@ import {
 import { useUndo } from "../undo";
 import { resolveDragEnd } from "../dnd";
 import { buildTree, deletionImpact, findPath, groupTasksByArea, splitActiveAndCompleted, type AreaNode } from "../tree";
-import { AddAreaRow, AddTaskRow, AreaColumnItem, Column, TaskColumnList } from "./ColumnView";
-import { Breadcrumb } from "./primitives";
+import { AddAreaRow, AreaColumnItem, Column, TaskColumnList } from "./ColumnView";
+import { AddTaskBar } from "./AddTaskBar";
+import { BackIcon, Breadcrumb } from "./primitives";
 import { DeleteConfirmDialog } from "./Dialog";
 import { TaskInspector } from "./TaskInspector";
 import { SearchResults } from "./SearchResults";
@@ -60,6 +61,7 @@ export function ColumnViewScreen({
   showAvatars: boolean;
 }) {
   const [maxColumns, setMaxColumns] = useMaxColumns();
+  const isMobile = useIsMobile();
   const cycleStatus = useCycleTaskStatus();
   const createArea = useCreateArea();
   const createTask = useCreateTask();
@@ -83,7 +85,6 @@ export function ColumnViewScreen({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   function handleDragEnd(event: DragEndEvent) {
@@ -150,11 +151,23 @@ export function ColumnViewScreen({
   }
 
   // Sliding window: only render the deepest `maxColumns` columns; older ones live in the breadcrumb.
-  const startIdx = Math.max(0, columns.length - maxColumns);
+  // On mobile there's only room for one pane, so it always shows just the deepest column —
+  // navigation happens via the back button instead of side-by-side columns.
+  const startIdx = Math.max(0, columns.length - (isMobile ? 1 : maxColumns));
   const visibleColumns = columns.slice(startIdx);
 
   function selectArea(depth: number, id: string) {
     setSelection([...validSelection.slice(0, depth), id]);
+    setSelectedTaskId(null);
+    setEditingTaskId(null);
+    setEditingAreaId(null);
+  }
+
+  // Mobile: Columns collapses to a single pane showing only the deepest drilled-into
+  // area, with a back button walking up one level at a time (like Tree view's
+  // breadcrumb navigation, but as a single stack instead of a sidebar tree).
+  function goBack() {
+    setSelection(validSelection.slice(0, -1));
     setSelectedTaskId(null);
     setEditingTaskId(null);
     setEditingAreaId(null);
@@ -178,19 +191,41 @@ export function ColumnViewScreen({
         className="flex items-center justify-between gap-3 px-5 py-2.5"
         style={{ borderBottom: "1px solid var(--border-default)" }}
       >
-        <nav className="flex min-w-0 items-center gap-1.5" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>
-          <Breadcrumb
-            items={path}
-            emptyLabel="Pick an area to drill in"
-            onNavigate={(index) => {
-              setSelection(path.slice(0, index + 1).map((n) => n.id));
-              setSelectedTaskId(null);
-              setEditingTaskId(null);
-              setEditingAreaId(null);
-            }}
-          />
-        </nav>
-        <div className="flex shrink-0 items-center gap-2">
+        {isMobile ? (
+          <div className="flex min-w-0 items-center gap-1.5">
+            {validSelection.length > 0 && (
+              <button
+                type="button"
+                onClick={goBack}
+                title="Back"
+                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent"
+                style={{ borderRadius: "var(--radius-xs)", color: "var(--text-secondary)" }}
+              >
+                <BackIcon />
+              </button>
+            )}
+            <span
+              className="truncate"
+              style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--text-primary)" }}
+            >
+              {visibleColumns.at(-1)?.parent?.name ?? "Areas"}
+            </span>
+          </div>
+        ) : (
+          <nav className="flex min-w-0 items-center gap-1.5" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>
+            <Breadcrumb
+              items={path}
+              emptyLabel="Pick an area to drill in"
+              onNavigate={(index) => {
+                setSelection(path.slice(0, index + 1).map((n) => n.id));
+                setSelectedTaskId(null);
+                setEditingTaskId(null);
+                setEditingAreaId(null);
+              }}
+            />
+          </nav>
+        )}
+        <div className={isMobile ? "flex min-w-0 flex-1 items-center justify-end gap-2" : "flex shrink-0 items-center gap-2"}>
         <input
           value={search}
           placeholder="Search areas, tasks, #tags…"
@@ -202,7 +237,7 @@ export function ColumnViewScreen({
               else if (matches[0]) openTaskFromSearch(matches[0]);
             }
           }}
-          className="w-[170px] shrink-0 px-2 py-1 outline-none"
+          className={isMobile ? "min-w-0 flex-1 px-2 py-1 outline-none" : "w-[170px] shrink-0 px-2 py-1 outline-none"}
           style={{
             fontFamily: "var(--font-sans)",
             fontSize: "var(--text-sm)",
@@ -212,6 +247,7 @@ export function ColumnViewScreen({
             borderRadius: "var(--radius-sm)",
           }}
         />
+        {!isMobile && (
         <div
           className="flex shrink-0 items-center gap-0.5 p-0.5"
           style={{ background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)" }}
@@ -239,6 +275,7 @@ export function ColumnViewScreen({
             );
           })}
         </div>
+        )}
         </div>
       </div>
 
@@ -261,6 +298,48 @@ export function ColumnViewScreen({
           const { active: activeTasks } = splitActiveAndCompleted(col.tasks);
           return (
             <Column key={col.parent?.id ?? "root"}>
+              {canEdit &&
+                (col.parent ? (
+                  <>
+                    <div
+                      className="mb-1.5 px-2.5 py-1.5"
+                      style={{
+                        border: "1px solid var(--border-default)",
+                        borderRadius: "var(--radius-md)",
+                        background: "var(--surface-raised)",
+                      }}
+                    >
+                      <AddTaskBar
+                        onAdd={(input) => createTask.mutate({ areaId: col.parent!.id, ...input })}
+                        placeholder="Add task…"
+                      />
+                    </div>
+                    <div
+                      className="mb-1.5 px-2.5 py-1.5"
+                      style={{
+                        border: "1px solid var(--border-default)",
+                        borderRadius: "var(--radius-md)",
+                        background: "var(--surface-raised)",
+                      }}
+                    >
+                      <AddAreaRow
+                        placeholder="New sub-area…"
+                        onAdd={(name) => createArea.mutate({ name, parentId: col.parent!.id, workspaceId })}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    className="mb-1.5 px-2.5 py-1.5"
+                    style={{
+                      border: "1px solid var(--border-default)",
+                      borderRadius: "var(--radius-md)",
+                      background: "var(--surface-raised)",
+                    }}
+                  >
+                    <AddAreaRow placeholder="New area…" onAdd={(name) => createArea.mutate({ name, parentId: null, workspaceId })} />
+                  </div>
+                ))}
               <SortableContext
                 items={[...col.areas.map((a) => a.id), ...activeTasks.map((t) => t.id)]}
                 strategy={verticalListSortingStrategy}
@@ -299,21 +378,9 @@ export function ColumnViewScreen({
               </SortableContext>
               {isEmptyRoot && (
                 <div className="px-2 py-2" style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>
-                  {canEdit ? "No areas yet — create your first one below." : "No areas yet."}
+                  {canEdit ? "No areas yet — create your first one above." : "No areas yet."}
                 </div>
               )}
-              {canEdit &&
-                (col.parent ? (
-                  <>
-                    <AddAreaRow
-                      placeholder="New sub-area…"
-                      onAdd={(name) => createArea.mutate({ name, parentId: col.parent!.id, workspaceId })}
-                    />
-                    <AddTaskRow onAdd={(input) => createTask.mutate({ areaId: col.parent!.id, ...input })} />
-                  </>
-                ) : (
-                  <AddAreaRow placeholder="New area…" onAdd={(name) => createArea.mutate({ name, parentId: null, workspaceId })} />
-                ))}
             </Column>
           );
         })}

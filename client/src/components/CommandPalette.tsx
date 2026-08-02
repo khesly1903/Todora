@@ -36,11 +36,13 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastMousePos = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (open) {
       setQuery("");
       setActive(0);
+      lastMousePos.current = null;
       // focus after mount
       requestAnimationFrame(() => inputRef.current?.focus());
     }
@@ -80,6 +82,11 @@ export function CommandPalette({
   }, [query, commands, areas, tasks, roots]);
 
   useEffect(() => {
+    setActive(0);
+    lastMousePos.current = null;
+  }, [query]);
+
+  useEffect(() => {
     setActive((a) => Math.min(a, Math.max(0, items.length - 1)));
   }, [items.length]);
 
@@ -117,9 +124,11 @@ export function CommandPalette({
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
+              lastMousePos.current = null;
               setActive((a) => Math.min(a + 1, items.length - 1));
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
+              lastMousePos.current = null;
               setActive((a) => Math.max(a - 1, 0));
             } else if (e.key === "Enter") {
               e.preventDefault();
@@ -148,7 +157,17 @@ export function CommandPalette({
             return (
               <div
                 key={key}
-                onMouseEnter={() => setActive(i)}
+                onMouseMove={(e) => {
+                  const last = lastMousePos.current;
+                  if (last && last.x === e.clientX && last.y === e.clientY) {
+                    return;
+                  }
+                  lastMousePos.current = { x: e.clientX, y: e.clientY };
+                  if (!last) {
+                    return;
+                  }
+                  setActive(i);
+                }}
                 onClick={() => runItem(item)}
                 className="flex cursor-pointer items-center gap-2.5 px-3 py-2"
                 style={{

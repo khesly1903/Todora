@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type TaskUpdate } from "./api";
 import type { Area, Priority, Task, TaskStatus, Workspace, WorkspaceRole } from "./types";
@@ -387,6 +388,46 @@ export function useChangePassword() {
       api.changePassword(input.currentPassword, input.newPassword),
     meta: { silent: true },
   });
+}
+
+// Mirrors the app's `md` Tailwind breakpoint (768px) so JS-driven layout
+// decisions (e.g. collapsing Columns view to a single pane) stay in sync
+// with the CSS `md:` classes used everywhere else.
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767px)").matches);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const onChange = () => setIsMobile(mql.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return isMobile;
+}
+
+export function useTaskLineClamp() {
+  const [clampThree, setClampThree] = useState<boolean>(() => {
+    const stored = localStorage.getItem("todora-task-line-clamp");
+    return stored === null ? true : stored === "3";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.taskLineClamp = clampThree ? "3" : "1";
+    localStorage.setItem("todora-task-line-clamp", clampThree ? "3" : "1");
+    window.dispatchEvent(new Event("todora-line-clamp-changed"));
+  }, [clampThree]);
+
+  useEffect(() => {
+    function onSync() {
+      const stored = localStorage.getItem("todora-task-line-clamp");
+      setClampThree(stored === null ? true : stored === "3");
+    }
+    window.addEventListener("todora-line-clamp-changed", onSync);
+    return () => window.removeEventListener("todora-line-clamp-changed", onSync);
+  }, []);
+
+  return [clampThree, setClampThree] as const;
 }
 
 export type { Workspace };

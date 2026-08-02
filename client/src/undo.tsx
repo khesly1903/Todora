@@ -87,7 +87,9 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     deleteTask: (task) =>
       schedule(
         `Deleted “${task.title}”`,
-        () => qc.setQueryData<Task[]>(["tasks"], (ts) => ts?.filter((t) => t.id !== task.id)),
+        () => {
+          qc.setQueriesData<Task[]>({ queryKey: ["tasks"] }, (ts) => ts?.filter((t) => t.id !== task.id));
+        },
         () => {
           void api.deleteTask(task.id).then(() => qc.invalidateQueries({ queryKey: ["tasks"] }));
         },
@@ -96,10 +98,11 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       schedule(
         `Deleted “${area.name}”`,
         () => {
-          const areas = qc.getQueryData<Area[]>(["areas"]) ?? [];
+          const areaQueries = qc.getQueriesData<Area[]>({ queryKey: ["areas"] });
+          const areas = areaQueries[0]?.[1] ?? [];
           const ids = subtreeIds(areas, area.id);
-          qc.setQueryData<Area[]>(["areas"], (as) => as?.filter((a) => !ids.has(a.id)));
-          qc.setQueryData<Task[]>(["tasks"], (ts) => ts?.filter((t) => !ids.has(t.areaId)));
+          qc.setQueriesData<Area[]>({ queryKey: ["areas"] }, (as) => as?.filter((a) => !ids.has(a.id)));
+          qc.setQueriesData<Task[]>({ queryKey: ["tasks"] }, (ts) => ts?.filter((t) => !ids.has(t.areaId)));
         },
         () => {
           void api.deleteArea(area.id).then(() => {
@@ -134,7 +137,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
           </button>
           <button
             type="button"
-            title="Dismiss"
+            title="Confirm deletion immediately"
             onClick={flush}
             className="cursor-pointer border-none bg-transparent p-0"
             style={{ fontSize: 15, lineHeight: 1, color: "var(--text-tertiary)" }}

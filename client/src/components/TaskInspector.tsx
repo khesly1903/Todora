@@ -49,6 +49,7 @@ export function TaskInspector({
   const [description, setDescription] = useState(task.description ?? "");
   const [tagDraft, setTagDraft] = useState("");
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   function commitDescription() {
     const next = description.trim() === "" ? null : description;
@@ -78,13 +79,23 @@ export function TaskInspector({
     }
   }
 
-  // Auto-grow the title textarea so the whole task fits without scrolling.
+  // Auto-grow the title textarea up to 180px, with scroll enabled above that.
   useLayoutEffect(() => {
     const el = titleRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    const newHeight = Math.min(el.scrollHeight, 180);
+    el.style.height = `${newHeight}px`;
   }, [title]);
+
+  // Auto-grow the notes textarea up to 320px, with scroll enabled above that.
+  useLayoutEffect(() => {
+    const el = notesRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const newHeight = Math.min(Math.max(el.scrollHeight, 72), 320);
+    el.style.height = `${newHeight}px`;
+  }, [description]);
 
   // On open, place the caret at the end of the task text rather than the start.
   useLayoutEffect(() => {
@@ -101,11 +112,19 @@ export function TaskInspector({
     else if (!trimmed) setTitle(task.title);
   }
 
+  const lastUpdater = task.updatedBy ?? task.createdBy;
+
   return (
-    <div
-      className="flex h-full w-[280px] max-w-[85vw] shrink-0 flex-col gap-4 overflow-y-auto p-5"
-      style={{ background: "var(--surface-inspector)", borderLeft: "1px solid var(--border-default)" }}
-    >
+    <>
+      {/* Mobile backdrop (< 768px only) */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] md:hidden transition-opacity"
+        onClick={onClose}
+      />
+      <div
+        className="fixed inset-y-0 right-0 z-50 flex h-full w-[320px] max-w-[88vw] flex-col gap-4 overflow-y-auto p-5 shadow-2xl md:relative md:inset-auto md:z-0 md:w-[280px] md:max-w-[85vw] md:shrink-0 md:shadow-none"
+        style={{ background: "var(--surface-inspector)", borderLeft: "1px solid var(--border-default)" }}
+      >
       <div className="flex items-start justify-between gap-2">
         <FieldLabel>Task</FieldLabel>
         <button
@@ -138,7 +157,7 @@ export function TaskInspector({
           }
         }}
         rows={1}
-        className="w-full resize-none overflow-hidden px-2.5 py-2 outline-none"
+        className="w-full resize-none overflow-y-auto px-2.5 py-2 outline-none"
         style={{
           fontSize: "var(--text-md)",
           fontWeight: "var(--weight-medium)",
@@ -147,6 +166,7 @@ export function TaskInspector({
           background: "var(--surface-raised)",
           border: "1px solid var(--border-default)",
           borderRadius: "var(--radius-sm)",
+          maxHeight: "180px",
         }}
       />
 
@@ -284,13 +304,14 @@ export function TaskInspector({
       <div className="flex flex-col gap-1.5">
         <FieldLabel>Notes</FieldLabel>
         <textarea
+          ref={notesRef}
           value={description}
           placeholder="Add notes…"
           readOnly={!canEdit}
           onChange={(e) => setDescription(e.target.value)}
           onBlur={commitDescription}
           rows={3}
-          className="w-full resize-y px-2 py-1.5 outline-none"
+          className="w-full resize-none overflow-y-auto px-2 py-1.5 outline-none"
           style={{
             fontFamily: "var(--font-sans)",
             fontSize: "var(--text-sm)",
@@ -299,6 +320,8 @@ export function TaskInspector({
             background: "var(--surface-raised)",
             border: "1px solid var(--border-default)",
             borderRadius: "var(--radius-sm)",
+            minHeight: "72px",
+            maxHeight: "320px",
           }}
         />
       </div>
@@ -314,6 +337,19 @@ export function TaskInspector({
                 by
                 {showAvatars && <Avatar user={task.createdBy} size={14} />}
                 {task.createdBy.name ?? task.createdBy.username}
+              </>
+            )}
+          </span>
+        </div>
+        <div className="flex items-center justify-between" style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
+          <span>Updated</span>
+          <span className="flex items-center gap-1.5">
+            {formatDate(task.updatedAt)}
+            {lastUpdater && (
+              <>
+                by
+                {showAvatars && <Avatar user={lastUpdater} size={14} />}
+                {lastUpdater.name ?? lastUpdater.username}
               </>
             )}
           </span>
@@ -343,5 +379,6 @@ export function TaskInspector({
         )}
       </div>
     </div>
+    </>
   );
 }

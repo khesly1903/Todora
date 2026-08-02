@@ -6,7 +6,6 @@ import {
   type DraggableSyntheticListeners,
   type DragEndEvent,
   type DragOverEvent,
-  KeyboardSensor,
   PointerSensor,
   pointerWithin,
   useDroppable,
@@ -15,7 +14,6 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -79,6 +77,15 @@ function CollapseAllIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </svg>
   );
 }
@@ -149,6 +156,7 @@ import {
   useCycleTaskStatus,
   useRenameArea,
   useRenameTask,
+  useTaskLineClamp,
   useUpdateTask,
 } from "../hooks";
 import { useUndo } from "../undo";
@@ -342,7 +350,6 @@ export function TreeView({
   const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
   const treeSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   // Only areas need band-aware drop resolution — tasks drop the same way they always did.
@@ -487,6 +494,7 @@ export function TreeView({
                 depth={0}
                 expanded={expanded}
                 selectedId={selectedId}
+                selectedTaskId={selectedTaskId}
                 renamingAreaId={renamingAreaId}
                 adding={adding}
                 tasksByArea={tasksByArea}
@@ -494,6 +502,7 @@ export function TreeView({
                 dropIndicator={dropIndicator}
                 onToggle={toggle}
                 onSelect={selectArea}
+                onSelectTask={setSelectedTaskId}
                 onStartRename={setRenamingAreaId}
                 onSubmitRename={(id, name) => {
                   setRenamingAreaId(null);
@@ -621,6 +630,7 @@ interface BranchProps {
   depth: number;
   expanded: Set<string>;
   selectedId: string | null;
+  selectedTaskId: string | null;
   renamingAreaId: string | null;
   adding: AddingArea | null;
   tasksByArea: Map<string, Task[]>;
@@ -628,6 +638,7 @@ interface BranchProps {
   dropIndicator: { id: string; position: DropPosition } | null;
   onToggle: (id: string) => void;
   onSelect: (id: string) => void;
+  onSelectTask: (id: string) => void;
   onStartRename: (id: string) => void;
   onSubmitRename: (id: string, name: string) => void;
   onCancelRename: () => void;
@@ -739,6 +750,19 @@ function AreaBranch(props: BranchProps) {
               <AreaBranch key={child.id} {...props} node={child} depth={depth + 1} />
             ))}
           </SortableContext>
+          {hasChildren &&
+            (tasksByArea.get(node.id) ?? []).map((task) => (
+              <SidebarTaskRow
+                key={task.id}
+                task={task}
+                depth={depth + 1}
+                selected={props.selectedTaskId === task.id}
+                onSelect={() => {
+                  props.onSelect(node.id);
+                  props.onSelectTask(task.id);
+                }}
+              />
+            ))}
           {adding?.parentId === node.id && (
             <div
               className="flex h-6 items-center gap-1.5"
@@ -755,6 +779,53 @@ function AreaBranch(props: BranchProps) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function SidebarTaskRow({
+  task,
+  depth,
+  selected,
+  onSelect,
+}: {
+  task: Task;
+  depth: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const done = task.status === "DONE";
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+      className="flex min-h-6 cursor-default items-center gap-1.5 py-1"
+      style={{
+        padding: `0 8px 0 ${4 + depth * 16}px`,
+        borderRadius: "var(--radius-sm)",
+        background: selected ? "var(--accent-tint-strong)" : hover ? "var(--surface-hover)" : "transparent",
+      }}
+    >
+      <span className="inline-flex w-3 justify-center" />
+      <StatusDot status={task.status} />
+      <span
+        className="task-title-text flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+        style={{
+          fontSize: "var(--text-sm)",
+          color: selected ? "var(--accent-10)" : "var(--text-primary)",
+          fontWeight: selected ? "var(--weight-medium)" : "var(--weight-regular)",
+          textDecoration: done ? "line-through" : "none",
+          opacity: done ? 0.6 : 1,
+        }}
+      >
+        {task.title}
+      </span>
     </div>
   );
 }
@@ -804,23 +875,24 @@ function TaskPanel({
 }) {
   const [showCompleted, setShowCompleted] = useState(false);
   const [completedExpanded, setCompletedExpanded] = useState(true);
+  const [clampThree, setClampThree] = useTaskLineClamp();
   const setEditingTaskId = onSetEditingTask;
 
   const { active, completed } = splitActiveAndCompleted(tasks);
 
   return (
     <>
-      <div className="flex items-center justify-between px-5 pt-2">
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>
+      <div className="flex items-center justify-between gap-2 px-5 pt-2">
+        <span className="shrink-0 whitespace-nowrap" style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>
           {counts.total > 0 ? `${counts.done}/${counts.total} complete` : "No tasks yet"}
         </span>
         {canEdit && (
-          <div className="flex gap-1">
+          <div className="flex shrink-0 gap-1">
             <Button variant="ghost" icon={<PlusIcon />} onClick={onAddChildArea}>
-              Sub-area
+              <span className="hidden sm:inline">Sub-area</span>
             </Button>
-            <Button variant="ghost" onClick={onDeleteArea}>
-              Delete area
+            <Button variant="ghost" icon={<TrashIcon />} onClick={onDeleteArea}>
+              <span className="hidden sm:inline">Delete area</span>
             </Button>
           </div>
         )}
@@ -831,9 +903,26 @@ function TaskPanel({
         className="flex flex-col gap-2.5 px-5 py-3.5"
         style={{ borderBottom: "1px solid var(--border-default)" }}
       >
-        <nav className="flex min-w-0 items-center gap-1.5" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>
-          <Breadcrumb items={path} onNavigate={onNavigate} />
-        </nav>
+        <div className="flex items-center justify-between gap-2">
+          <nav className="flex min-w-0 items-center gap-1.5" style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>
+            <Breadcrumb items={path} onNavigate={onNavigate} />
+          </nav>
+          <button
+            type="button"
+            onClick={() => setClampThree((v) => !v)}
+            title={clampThree ? "Switch to 1 line task titles" : "Switch to multiple lines task titles"}
+            className="inline-flex cursor-pointer items-center gap-1.5 border-none bg-transparent px-2 py-0.5 transition-colors"
+            style={{
+              fontSize: "var(--text-2xs)",
+              color: clampThree ? "var(--text-primary)" : "var(--text-tertiary)",
+              background: clampThree ? "var(--surface-sunken)" : "transparent",
+              borderRadius: "var(--radius-xs)",
+              fontWeight: "var(--weight-medium)",
+            }}
+          >
+            <span>{clampThree ? "Multiple lines" : "1 line"}</span>
+          </button>
+        </div>
         {canEdit && (
           <div
             className="flex flex-col gap-1.5 px-2.5 py-1.5"
@@ -1058,7 +1147,7 @@ function TaskRow({
 
   if (editing) {
     return (
-      <div className="flex h-7 items-center gap-2 px-2">
+      <div className="flex min-h-7 items-center gap-2 px-2 py-1">
         <StatusDot status={task.status} />
         <InlineInput defaultValue={task.title} onSubmit={onSubmitEdit} onCancel={onCancelEdit} />
       </div>
@@ -1074,14 +1163,14 @@ function TaskRow({
       onMouseLeave={() => setHover(false)}
       onClick={onSelect}
       onDoubleClick={() => canEdit && onStartEdit()}
-      className="flex h-7 cursor-default items-center gap-2 px-2"
+      className="flex min-h-7 cursor-default items-center gap-2 px-2 py-1"
       style={{
         borderRadius: "var(--radius-sm)",
         background: selected ? "var(--accent-tint-strong)" : hover ? "var(--surface-hover)" : "transparent",
         ...(dnd?.style ?? {}),
       }}
     >
-      {showAvatar && task.createdBy && <Avatar user={task.createdBy} size={16} />}
+      {showAvatar && (task.updatedBy ?? task.createdBy) && <Avatar user={(task.updatedBy ?? task.createdBy)!} size={16} />}
       <StatusDot status={task.status} onClick={canEdit ? onCycleStatus : undefined} />
       {task.priority !== "NONE" && (
         <span
@@ -1093,7 +1182,7 @@ function TaskRow({
         </span>
       )}
       <span
-        className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+        className="task-title-text flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
         title={STATUS_LABELS[task.status]}
         style={{
           fontSize: "var(--text-sm)",

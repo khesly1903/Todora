@@ -136,12 +136,12 @@ export function WorkspaceSwitcher({
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative min-w-0 shrink">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         title="Switch workspace"
-        className="flex h-8 max-w-[220px] cursor-pointer items-center gap-1.5 px-2.5"
+        className="flex h-8 min-w-0 max-w-[220px] cursor-pointer items-center gap-1.5 px-2.5"
         style={{
           background: "var(--surface-raised)",
           border: "1px solid var(--border-default)",
@@ -150,7 +150,7 @@ export function WorkspaceSwitcher({
         }}
       >
         <span
-          className="truncate"
+          className="min-w-0 truncate"
           style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)" }}
         >
           {current?.name ?? "Workspace"}

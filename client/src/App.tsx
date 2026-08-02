@@ -11,12 +11,13 @@ import { ProfileDialog } from "./components/ProfileDialog";
 import { WorkspaceSwitcher } from "./components/WorkspaceSwitcher";
 import { NotificationsBell } from "./components/NotificationsBell";
 import { AuthScreen } from "./components/AuthScreen";
-import { IconButton, Logo, MoonIcon, SearchIcon, SunIcon } from "./components/primitives";
+import { Avatar, IconButton, Logo, MoonIcon, SearchIcon, SunIcon } from "./components/primitives";
 import { buildExport, downloadJson, pickJsonFile } from "./backup";
 import { pushToast } from "./toast";
 import { LandingPage } from "./landing/LandingPage";
+import { getAppUrl, getLandingUrl, isAppDomain, isProdLandingDomain } from "./domains";
 import type { ExportNode } from "./api";
-import type { Area, Task } from "./types";
+import type { Area, Task, User } from "./types";
 import { canEditRole } from "./types";
 
 type Theme = "light" | "dark";
@@ -28,7 +29,38 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   calendar: "Calendar",
 };
 
-const ZOOM_STEPS = [80, 90, 100, 110, 120, 130, 140, 150];
+function TreeViewIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 6h10M8 12h10M8 18h10M4 6v12M4 12h4M4 18h4" />
+    </svg>
+  );
+}
+
+function ColumnsViewIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 3v18M15 3v18M3 3h18v18H3z" />
+    </svg>
+  );
+}
+
+function CalendarViewIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+const VIEW_ICONS: Record<ViewMode, () => JSX.Element> = {
+  tree: TreeViewIcon,
+  columns: ColumnsViewIcon,
+  calendar: CalendarViewIcon,
+};
+
+const ZOOM_STEPS = [80, 90, 100, 110, 120];
 
 function useZoom() {
   const [zoom, setZoom] = useState<number>(() => {
@@ -133,16 +165,35 @@ function ZoomControl({
 }
 
 function UserMenu({
-  label,
+  user,
+  view,
+  onViewChange,
+  theme,
+  onToggleTheme,
+  zoom,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+  onOpenShortcuts,
   onEditProfile,
   onLogout,
 }: {
-  label: string;
+  user: User;
+  view: ViewMode;
+  onViewChange: (v: ViewMode) => void;
+  theme: Theme;
+  onToggleTheme: () => void;
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
+  onOpenShortcuts: () => void;
   onEditProfile: () => void;
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const label = user.name ?? user.username;
 
   useEffect(() => {
     if (!open) return;
@@ -159,20 +210,18 @@ function UserMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         title={label}
-        className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center border-none"
+        className="flex h-[28px] w-[28px] cursor-pointer items-center justify-center border-none p-0 overflow-hidden transition-transform active:scale-95"
         style={{
-          fontSize: "var(--text-2xs)",
-          fontWeight: "var(--weight-semibold)",
-          color: "var(--text-primary)",
-          background: "var(--surface-sunken)",
           borderRadius: "var(--radius-full)",
+          background: "var(--surface-sunken)",
+          border: "1px solid var(--border-default)",
         }}
       >
-        {label.slice(0, 1).toUpperCase()}
+        <Avatar user={user} size={28} />
       </button>
       {open && (
         <div
-          className="absolute right-0 top-[calc(100%+4px)] z-[150] w-[200px] p-1"
+          className="absolute right-0 top-[calc(100%+6px)] z-[150] w-[240px] p-1.5"
           style={{
             background: "var(--surface-overlay)",
             border: "1px solid var(--border-subtle)",
@@ -183,6 +232,134 @@ function UserMenu({
           <div className="truncate px-2 py-1.5" style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--text-primary)" }}>
             {label}
           </div>
+
+          {/* Mobile-only controls (hidden on desktop md+) */}
+          <div className="flex flex-col gap-1 md:hidden">
+            <div className="my-1" style={{ borderTop: "1px solid var(--border-subtle)" }} />
+
+            {/* View Mode Selector */}
+            <div className="px-2 py-1">
+              <div className="mb-1.5 text-xs" style={{ color: "var(--text-tertiary)", fontWeight: "var(--weight-medium)" }}>VIEW MODE</div>
+              <div
+                className="flex flex-wrap items-center justify-center gap-1 p-0.5"
+                style={{ background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)" }}
+              >
+                {(["tree", "columns", "calendar"] as const).map((mode) => {
+                  const active = view === mode;
+                  const Icon = VIEW_ICONS[mode];
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      title={VIEW_LABELS[mode]}
+                      onClick={() => {
+                        onViewChange(mode);
+                        setOpen(false);
+                      }}
+                      className="flex cursor-pointer items-center justify-center gap-1 whitespace-nowrap border-none px-2 py-1.5 transition-all"
+                      style={{
+                        fontSize: "var(--text-xs)",
+                        fontWeight: active ? "var(--weight-medium)" : "var(--weight-regular)",
+                        borderRadius: "var(--radius-xs)",
+                        background: active ? "var(--surface-raised)" : "transparent",
+                        color: active ? "var(--text-primary)" : "var(--text-secondary)",
+                        boxShadow: active ? "var(--shadow-sm)" : "none",
+                      }}
+                    >
+                      <Icon />
+                      <span className="capitalize">{mode}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Theme Toggle */}
+            <div className="flex items-center justify-between px-2 py-1.5">
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Theme</span>
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                className="flex cursor-pointer items-center gap-1.5 border-none px-2 py-1 transition-colors"
+                style={{
+                  fontSize: "var(--text-xs)",
+                  color: "var(--text-primary)",
+                  background: "var(--surface-sunken)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                {theme === "light" ? <MoonIcon /> : <SunIcon />}
+                <span>{theme === "light" ? "Dark" : "Light"}</span>
+              </button>
+            </div>
+
+            {/* Zoom Controls */}
+            <div className="flex items-center justify-between px-2 py-1.5">
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Zoom</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={onZoomOut}
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center border-none transition-colors"
+                  style={{
+                    background: "var(--surface-sunken)",
+                    color: "var(--text-primary)",
+                    borderRadius: "var(--radius-xs)",
+                  }}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  onClick={onResetZoom}
+                  className="flex h-6 px-1.5 cursor-pointer items-center justify-center border-none bg-transparent"
+                  style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}
+                >
+                  {zoom}%
+                </button>
+                <button
+                  type="button"
+                  onClick={onZoomIn}
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center border-none transition-colors"
+                  style={{
+                    background: "var(--surface-sunken)",
+                    color: "var(--text-primary)",
+                    borderRadius: "var(--radius-xs)",
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* Notifications */}
+            <div className="flex items-center justify-between px-2 py-1.5">
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Notifications</span>
+              <NotificationsBell />
+            </div>
+
+            {/* Keyboard Shortcuts */}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onOpenShortcuts();
+              }}
+              className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-2 py-1.5 text-left transition-colors"
+              style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)", borderRadius: "var(--radius-sm)" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-sunken)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <span>Shortcuts</span>
+              <span
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full"
+                style={{ fontSize: "var(--text-2xs)", background: "var(--surface-sunken)", color: "var(--text-tertiary)" }}
+              >
+                ?
+              </span>
+            </button>
+          </div>
+
           <div className="my-1" style={{ borderTop: "1px solid var(--border-subtle)" }} />
           <button
             type="button"
@@ -190,7 +367,7 @@ function UserMenu({
               setOpen(false);
               onEditProfile();
             }}
-            className="flex w-full cursor-pointer items-center border-none bg-transparent px-2 py-1.5 text-left"
+            className="flex w-full cursor-pointer items-center border-none bg-transparent px-2 py-1.5 text-left transition-colors"
             style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)", borderRadius: "var(--radius-sm)" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-sunken)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -200,7 +377,7 @@ function UserMenu({
           <button
             type="button"
             onClick={onLogout}
-            className="flex w-full cursor-pointer items-center border-none bg-transparent px-2 py-1.5 text-left"
+            className="flex w-full cursor-pointer items-center border-none bg-transparent px-2 py-1.5 text-left transition-colors"
             style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)", borderRadius: "var(--radius-sm)" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-sunken)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -221,12 +398,14 @@ function ViewSwitch({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
     >
       {(["tree", "columns", "calendar"] as const).map((mode) => {
         const active = view === mode;
+        const Icon = VIEW_ICONS[mode];
         return (
           <button
             key={mode}
             type="button"
+            title={VIEW_LABELS[mode]}
             onClick={() => onChange(mode)}
-            className="cursor-pointer border-none px-2.5 py-1"
+            className="flex cursor-pointer items-center justify-center border-none px-2 py-1"
             style={{
               fontSize: "var(--text-xs)",
               fontWeight: active ? "var(--weight-medium)" : "var(--weight-regular)",
@@ -236,7 +415,7 @@ function ViewSwitch({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
               boxShadow: active ? "var(--shadow-sm)" : "none",
             }}
           >
-            {VIEW_LABELS[mode]}
+            <Icon />
           </button>
         );
       })}
@@ -273,8 +452,8 @@ function AuthedApp() {
     workspaceId && workspaces.some((w) => w.id === workspaceId) ? workspaceId : null;
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) ?? null;
   const canEdit = canEditRole(activeWorkspace?.role);
-  // Avatars only add value once a workspace has more than one member.
-  const showAvatars = (activeWorkspace?.memberCount ?? 1) > 1;
+  // Always show user avatars on tasks so profile avatars are visible even in personal workspaces.
+  const showAvatars = true;
 
   const areasQuery = useAreas(activeWorkspaceId);
   const tasksQuery = useTasks(activeWorkspaceId);
@@ -397,17 +576,18 @@ function AuthedApp() {
   return (
     <div className="flex h-full w-full flex-col" style={{ background: "var(--surface-content)" }}>
       <header
-        className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-2"
+        className="flex items-center justify-between gap-2 px-3 py-2 md:grid md:grid-cols-[1fr_auto_1fr] md:gap-3 md:px-4"
         style={{ borderBottom: "1px solid var(--border-default)" }}
       >
-        <div className="flex items-center gap-2 justify-self-start">
+        <div className="flex min-w-0 items-center gap-2 justify-self-start">
           <Logo />
           <span
+            className="hidden sm:inline"
             style={{ fontSize: "var(--text-md)", fontWeight: "var(--weight-semibold)", color: "var(--text-primary)", letterSpacing: "-0.01em" }}
           >
             Todora
           </span>
-          <div className="mx-1 h-5" style={{ width: 1, background: "var(--border-default)" }} />
+          <div className="hidden sm:block mx-1 h-5" style={{ width: 1, background: "var(--border-default)" }} />
           <WorkspaceSwitcher
             workspaces={workspaces}
             currentId={activeWorkspaceId}
@@ -415,14 +595,18 @@ function AuthedApp() {
             currentAreaCount={areas.length}
             currentTaskCount={tasks.length}
           />
+          <div className="hidden md:flex">
+            <ViewSwitch view={view} onChange={setView} />
+          </div>
         </div>
 
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
           title="Search areas, tasks, or run a command (⌘K)"
-          className="flex h-8 w-[380px] max-w-[40vw] cursor-text items-center gap-2 justify-self-center px-2.5"
+          className="flex h-8 w-full max-w-[42vw] sm:max-w-[30vw] md:max-w-[40vw] cursor-text items-center gap-2 justify-self-center px-2 sm:px-2.5 transition-all"
           style={{
+            maxWidth: zoom > 100 ? (zoom === 110 ? 280 : 230) : undefined,
             background: "var(--surface-raised)",
             border: "1px solid var(--border-default)",
             borderRadius: "var(--radius-md)",
@@ -430,11 +614,11 @@ function AuthedApp() {
           }}
         >
           <SearchIcon />
-          <span className="flex-1 text-left" style={{ fontSize: "var(--text-sm)" }}>
-            Search areas, tasks, or run a command…
+          <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left" style={{ fontSize: "var(--text-sm)" }}>
+            Search…
           </span>
           <span
-            className="shrink-0 px-1.5 py-0.5"
+            className="hidden sm:inline-block shrink-0 px-1.5 py-0.5"
             style={{
               fontSize: "var(--text-2xs)",
               color: "var(--text-secondary)",
@@ -448,12 +632,14 @@ function AuthedApp() {
         </button>
 
         <div className="flex shrink-0 items-center gap-2 justify-self-end">
-          <ViewSwitch view={view} onChange={setView} />
+          <div className="hidden md:flex">
+            <ZoomControl zoom={zoom} onZoomOut={zoomOut} onZoomIn={zoomIn} onReset={resetZoom} />
+          </div>
           <button
             type="button"
             onClick={() => setShortcutsOpen(true)}
             title="Keyboard shortcuts"
-            className="inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center"
+            className="hidden md:inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center"
             style={{
               fontSize: "var(--text-xs)",
               fontWeight: "var(--weight-semibold)",
@@ -465,16 +651,28 @@ function AuthedApp() {
           >
             ?
           </button>
-          <ZoomControl zoom={zoom} onZoomOut={zoomOut} onZoomIn={zoomIn} onReset={resetZoom} />
-          <IconButton
-            icon={theme === "light" ? <MoonIcon /> : <SunIcon />}
-            onClick={toggle}
-            title="Toggle theme"
-          />
-          <NotificationsBell />
+          <div className="hidden md:inline-flex">
+            <IconButton
+              icon={theme === "light" ? <MoonIcon /> : <SunIcon />}
+              onClick={toggle}
+              title="Toggle theme"
+            />
+          </div>
+          <div className="hidden md:inline-flex">
+            <NotificationsBell />
+          </div>
           {user && (
             <UserMenu
-              label={user.name ?? user.username}
+              user={user}
+              view={view}
+              onViewChange={setView}
+              theme={theme}
+              onToggleTheme={toggle}
+              zoom={zoom}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onResetZoom={resetZoom}
+              onOpenShortcuts={() => setShortcutsOpen(true)}
               onEditProfile={() => setProfileOpen(true)}
               onLogout={logout}
             />
@@ -555,15 +753,85 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return children;
 }
 
-/** Wraps a public route (landing, login, signup); bounces signed-in users straight to /app. */
+function RedirectExternal({ url }: { url: string }) {
+  useEffect(() => {
+    window.location.replace(url);
+  }, [url]);
+  return null;
+}
+
+/** Wraps a public route (landing, login, signup); bounces signed-in users straight to app. */
 function RedirectIfAuthed({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  if (user) return <Navigate to="/app" replace />;
+  if (user) {
+    if (isProdLandingDomain()) {
+      window.location.replace(getAppUrl("/"));
+      return null;
+    }
+    return <Navigate to={isAppDomain() ? "/" : "/app"} replace />;
+  }
   return children;
 }
 
 export default function App() {
+  const appDomain = isAppDomain();
+  const prodLanding = isProdLandingDomain();
+
+  if (prodLanding) {
+    return (
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/home" element={<LandingPage />} />
+        <Route path="/login" element={<RedirectExternal url={getAppUrl("/login")} />} />
+        <Route path="/signup" element={<RedirectExternal url={getAppUrl("/signup")} />} />
+        <Route path="/app" element={<RedirectExternal url={getAppUrl("/")} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  if (appDomain) {
+    return (
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <AuthedApp />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/app"
+          element={
+            <RequireAuth>
+              <AuthedApp />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <RedirectIfAuthed>
+              <AuthScreen initialMode="login" />
+            </RedirectIfAuthed>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <RedirectIfAuthed>
+              <AuthScreen initialMode="register" />
+            </RedirectIfAuthed>
+          }
+        />
+        <Route path="/home" element={<RedirectExternal url={getLandingUrl("/")} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
       <Route

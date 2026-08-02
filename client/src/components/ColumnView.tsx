@@ -7,7 +7,6 @@ import { countSubtree, splitActiveAndCompleted } from "../tree";
 import { Avatar, ChevronRight, ChevronToggle, DueBadge, FolderIcon, InlineInput, StatusDot } from "./primitives";
 import { isOverdue } from "../utils";
 import { PRIORITY_COLORS } from "../types";
-import { AddTaskBar, type CreateTaskInput } from "./AddTaskBar";
 
 export function Column({ children, dropRef }: { children: ReactNode; dropRef?: (el: HTMLElement | null) => void }) {
   return (
@@ -172,7 +171,7 @@ export function TaskColumnItem({
 
   if (editing) {
     return (
-      <div className="flex h-[26px] items-center gap-2 px-2">
+      <div className="flex min-h-[26px] items-center gap-2 px-2 py-1">
         <StatusDot status={task.status} />
         <InlineInput defaultValue={task.title} onSubmit={onSubmitEdit} onCancel={onCancelEdit} />
       </div>
@@ -190,10 +189,10 @@ export function TaskColumnItem({
       onClick={onSelect}
       onDoubleClick={() => canEdit && onStartEdit()}
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
-      className="flex h-[26px] cursor-default items-center gap-2 px-2 hover:bg-[var(--surface-hover)]"
+      className="flex min-h-[26px] cursor-default items-center gap-2 px-2 py-1 hover:bg-[var(--surface-hover)]"
       style={{ borderRadius: "var(--radius-sm)", background: selected ? "var(--accent-tint-strong)" : undefined, ...dnd.style }}
     >
-      {showAvatar && task.createdBy && <Avatar user={task.createdBy} size={16} />}
+      {showAvatar && (task.updatedBy ?? task.createdBy) && <Avatar user={(task.updatedBy ?? task.createdBy)!} size={16} />}
       <StatusDot status={task.status} onClick={canEdit ? onCycleStatus : undefined} />
       {task.priority !== "NONE" && (
         <span
@@ -205,7 +204,7 @@ export function TaskColumnItem({
         </span>
       )}
       <span
-        className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+        className="task-title-text flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
         style={{
           fontSize: "var(--text-sm)",
           color: done ? "var(--text-tertiary)" : selected ? "var(--accent-10)" : "var(--text-primary)",
@@ -337,18 +336,10 @@ export function TaskColumnList({
   );
 }
 
-export function AddTaskRow({ onAdd }: { onAdd: (input: CreateTaskInput) => void }) {
-  return (
-    <div className="mt-1 px-2">
-      <AddTaskBar onAdd={onAdd} placeholder="Add task…" />
-    </div>
-  );
-}
-
 export function AddAreaRow({ onAdd, placeholder = "New area…" }: { onAdd: (name: string) => void; placeholder?: string }) {
   const [value, setValue] = useState("");
   return (
-    <div className="flex h-[26px] items-center gap-1.5 px-2">
+    <div className="flex h-[26px] items-center gap-1.5">
       <span className="inline-flex" style={{ opacity: 0.45 }}>
         <FolderIcon />
       </span>

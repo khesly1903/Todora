@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import { getLandingUrl } from "../domains";
 import { Button, Logo, TextField } from "./primitives";
 
 type Mode = "login" | "register";
@@ -67,12 +68,12 @@ export function AuthScreen({ initialMode }: { initialMode: Mode }) {
           boxShadow: "var(--shadow-lg)",
         }}
       >
-        <div className="mb-6 flex items-center gap-2">
+        <a href={getLandingUrl("/")} className="mb-6 flex w-fit items-center gap-2 no-underline">
           <Logo />
           <span style={{ fontSize: "var(--text-md)", fontWeight: "var(--weight-semibold)", color: "var(--text-primary)" }}>
             Todora
           </span>
-        </div>
+        </a>
 
         <div
           className="mb-5 flex gap-0.5 p-0.5"

@@ -56,3 +56,13 @@ input.outline-none:focus-visible {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Multi-line task title display: up to 3 lines by default (when data-task-line-clamp="3" or unset) */
+:root:not([data-task-line-clamp="1"]) .task-title-text {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+}

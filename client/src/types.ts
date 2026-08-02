@@ -81,6 +81,8 @@ export interface Task {
   createdBy: User | null;
   completedById: string | null;
   completedBy: User | null;
+  updatedById?: string | null;
+  updatedBy?: User | null;
   createdAt: string;
   updatedAt: string;
 }

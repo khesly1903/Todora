@@ -132,6 +132,21 @@ export function ChevronRight() {
   );
 }
 
+export function BackIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <path
+        d="M8.5 1.5L3 7l5.5 5.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SunIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>

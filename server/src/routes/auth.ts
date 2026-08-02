@@ -23,6 +23,9 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(1).max(200),
 });
 
+const COOKIE_DOMAIN =
+  process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === "production" ? ".todora.xyz" : undefined);
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: "lax" as const,
@@ -30,6 +33,7 @@ const COOKIE_OPTIONS = {
   // deployed behind HTTPS (production/Coolify) — otherwise the browser drops the cookie.
   secure: process.env.NODE_ENV === "production",
   maxAge: 7 * 24 * 60 * 60 * 1000,
+  domain: COOKIE_DOMAIN,
 };
 
 authRouter.post("/register", async (req, res, next) => {
@@ -57,7 +61,12 @@ authRouter.post("/login", async (req, res, next) => {
 });
 
 authRouter.post("/logout", (_req, res) => {
-  res.clearCookie(AUTH_COOKIE, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  res.clearCookie(AUTH_COOKIE, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    domain: COOKIE_DOMAIN,
+  });
   res.status(204).end();
 });
 

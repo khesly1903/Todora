@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { Logo } from "../components/primitives";
+import { getAppUrl, getLandingUrl } from "../domains";
 import { useGrowAnimation } from "./useGrowAnimation";
 import membersShot from "./screenshots/members.png";
 import treeShot from "./screenshots/tree.png";
@@ -13,8 +13,8 @@ export function LandingPage() {
   const { svgRef, play } = useGrowAnimation();
   const { user } = useAuth();
   const primaryCta = user
-    ? { to: "/app", label: "Open Todora →" }
-    : { to: "/signup", label: "Create account →" };
+    ? { href: getAppUrl("/"), label: "Open Todora →" }
+    : { href: getAppUrl("/signup"), label: "Create account →" };
 
   useEffect(() => {
     document.title = "Todora. Every task, in its place.";
@@ -23,13 +23,13 @@ export function LandingPage() {
   return (
     <div className="landing-page">
       <header className="nav-edge container">
-        <Link className="wordmark" to="/">
+        <a className="wordmark" href={getLandingUrl("/")}>
           <Logo />
           Todora
-        </Link>
+        </a>
         <div className="nav-edge__actions">
-          {!user && <Link className="link-cta" to="/login">Login</Link>}
-          <Link className="link-cta" to={primaryCta.to}>{primaryCta.label}</Link>
+          {!user && <a className="link-cta" href={getAppUrl("/login")}>Login</a>}
+          <a className="link-cta" href={primaryCta.href}>{primaryCta.label}</a>
         </div>
       </header>
 
@@ -43,7 +43,7 @@ export function LandingPage() {
                 a status you can see at a glance.
               </p>
               <p className="hero__cta">
-                <Link className="link-cta" to={primaryCta.to}>{primaryCta.label}</Link>
+                <a className="link-cta" href={primaryCta.href}>{primaryCta.label}</a>
               </p>
             </div>
 
@@ -199,7 +199,7 @@ export function LandingPage() {
 
         <section className="cta-band">
           <h2>{user ? "Your work is waiting." : "Start with one Area."}</h2>
-          <Link className="link-cta" to={primaryCta.to}>{primaryCta.label}</Link>
+          <a className="link-cta" href={primaryCta.href}>{primaryCta.label}</a>
         </section>
       </main>
 
