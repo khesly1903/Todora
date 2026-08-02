@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { useAreas, useCreateArea, useImportTree, useTasks, useWorkspaces } from "./hooks";
+import { useAreas, useCreateArea, useImportTree, useIsMobile, useTasks, useWorkspaces } from "./hooks";
 import { useAuth } from "./auth";
 import { TreeView } from "./components/TreeView";
 import { ColumnViewScreen } from "./components/ColumnViewScreen";
@@ -11,7 +11,7 @@ import { ProfileDialog } from "./components/ProfileDialog";
 import { WorkspaceSwitcher } from "./components/WorkspaceSwitcher";
 import { NotificationsBell } from "./components/NotificationsBell";
 import { AuthScreen } from "./components/AuthScreen";
-import { Avatar, IconButton, Logo, MoonIcon, SearchIcon, SunIcon } from "./components/primitives";
+import { Avatar, GearIcon, Logo, MoonIcon, SearchIcon, SunIcon } from "./components/primitives";
 import { buildExport, downloadJson, pickJsonFile } from "./backup";
 import { pushToast } from "./toast";
 import { LandingPage } from "./landing/LandingPage";
@@ -108,66 +108,10 @@ function useCurrentWorkspaceId() {
   return [id, setId] as const;
 }
 
-function ZoomControl({
-  zoom,
-  onZoomOut,
-  onZoomIn,
-  onReset,
-}: {
-  zoom: number;
-  onZoomOut: () => void;
-  onZoomIn: () => void;
-  onReset: () => void;
-}) {
-  const buttonStyle = {
-    fontSize: "var(--text-sm)",
-    color: "var(--text-secondary)",
-    background: "transparent",
-    border: "none",
-    cursor: "pointer",
-  } as const;
-  return (
-    <div
-      className="flex h-[22px] items-center"
-      style={{ background: "var(--surface-sunken)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-full)" }}
-    >
-      <button
-        type="button"
-        title="Zoom out"
-        onClick={onZoomOut}
-        disabled={zoom <= ZOOM_STEPS[0]!}
-        className="inline-flex h-full w-5 items-center justify-center disabled:opacity-40"
-        style={buttonStyle}
-      >
-        −
-      </button>
-      <button
-        type="button"
-        title="Reset zoom"
-        onClick={onReset}
-        className="inline-flex h-full items-center justify-center px-1 tabular-nums"
-        style={{ ...buttonStyle, fontSize: "var(--text-2xs)", fontWeight: "var(--weight-semibold)", minWidth: 32 }}
-      >
-        {zoom}%
-      </button>
-      <button
-        type="button"
-        title="Zoom in"
-        onClick={onZoomIn}
-        disabled={zoom >= ZOOM_STEPS.at(-1)!}
-        className="inline-flex h-full w-5 items-center justify-center disabled:opacity-40"
-        style={buttonStyle}
-      >
-        +
-      </button>
-    </div>
-  );
-}
-
-function UserMenu({
-  user,
+function SettingsMenu({
   view,
   onViewChange,
+  isMobile,
   theme,
   onToggleTheme,
   zoom,
@@ -175,12 +119,10 @@ function UserMenu({
   onZoomOut,
   onResetZoom,
   onOpenShortcuts,
-  onEditProfile,
-  onLogout,
 }: {
-  user: User;
   view: ViewMode;
   onViewChange: (v: ViewMode) => void;
+  isMobile: boolean;
   theme: Theme;
   onToggleTheme: () => void;
   zoom: number;
@@ -188,6 +130,179 @@ function UserMenu({
   onZoomOut: () => void;
   onResetZoom: () => void;
   onOpenShortcuts: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        title="Settings"
+        className="inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center border-none bg-transparent p-0 hover:bg-[var(--surface-hover)]"
+        style={{
+          borderRadius: "var(--radius-sm)",
+          background: open ? "var(--surface-active)" : undefined,
+          color: open ? "var(--accent-9)" : "var(--text-secondary)",
+        }}
+      >
+        <GearIcon />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+6px)] z-[150] w-[240px] p-1.5"
+          style={{
+            background: "var(--surface-overlay)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-md)",
+            boxShadow: "var(--shadow-lg)",
+          }}
+        >
+          {/* View Mode Selector — on mobile only Columns works well, so the choice is forced and hidden */}
+          {!isMobile && (
+            <div className="px-2 py-1">
+              <div className="mb-1.5 text-xs" style={{ color: "var(--text-tertiary)", fontWeight: "var(--weight-medium)" }}>VIEW MODE</div>
+              <div
+                className="flex flex-col gap-1 p-0.5"
+                style={{ background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)" }}
+              >
+                {(["tree", "columns", "calendar"] as const).map((mode) => {
+                  const active = view === mode;
+                  const Icon = VIEW_ICONS[mode];
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      title={VIEW_LABELS[mode]}
+                      onClick={() => {
+                        onViewChange(mode);
+                        setOpen(false);
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-1.5 whitespace-nowrap border-none px-2 py-1.5 text-left transition-all"
+                      style={{
+                        fontSize: "var(--text-xs)",
+                        fontWeight: active ? "var(--weight-medium)" : "var(--weight-regular)",
+                        borderRadius: "var(--radius-xs)",
+                        background: active ? "var(--surface-raised)" : "transparent",
+                        color: active ? "var(--text-primary)" : "var(--text-secondary)",
+                        boxShadow: active ? "var(--shadow-sm)" : "none",
+                      }}
+                    >
+                      <Icon />
+                      <span className="capitalize">{mode}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="my-1" style={{ borderTop: "1px solid var(--border-subtle)" }} />
+
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-between px-2 py-1.5">
+            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Theme</span>
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="flex cursor-pointer items-center gap-1.5 border-none px-2 py-1 transition-colors"
+              style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--text-primary)",
+                background: "var(--surface-sunken)",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              {theme === "light" ? <MoonIcon /> : <SunIcon />}
+              <span>{theme === "light" ? "Dark" : "Light"}</span>
+            </button>
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="flex items-center justify-between px-2 py-1.5">
+            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Zoom</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onZoomOut}
+                disabled={zoom <= ZOOM_STEPS[0]!}
+                className="flex h-6 w-6 cursor-pointer items-center justify-center border-none transition-colors disabled:opacity-40"
+                style={{
+                  background: "var(--surface-sunken)",
+                  color: "var(--text-primary)",
+                  borderRadius: "var(--radius-xs)",
+                }}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                onClick={onResetZoom}
+                className="flex h-6 px-1.5 cursor-pointer items-center justify-center border-none bg-transparent tabular-nums"
+                style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}
+              >
+                {zoom}%
+              </button>
+              <button
+                type="button"
+                onClick={onZoomIn}
+                disabled={zoom >= ZOOM_STEPS.at(-1)!}
+                className="flex h-6 w-6 cursor-pointer items-center justify-center border-none transition-colors disabled:opacity-40"
+                style={{
+                  background: "var(--surface-sunken)",
+                  color: "var(--text-primary)",
+                  borderRadius: "var(--radius-xs)",
+                }}
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div className="my-1" style={{ borderTop: "1px solid var(--border-subtle)" }} />
+
+          {/* Keyboard Shortcuts */}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onOpenShortcuts();
+            }}
+            className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-2 py-1.5 text-left transition-colors"
+            style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)", borderRadius: "var(--radius-sm)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-sunken)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <span>Shortcuts</span>
+            <span
+              className="inline-flex h-4 w-4 items-center justify-center rounded-full"
+              style={{ fontSize: "var(--text-2xs)", background: "var(--surface-sunken)", color: "var(--text-tertiary)" }}
+            >
+              ?
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserMenu({
+  user,
+  onEditProfile,
+  onLogout,
+}: {
+  user: User;
   onEditProfile: () => void;
   onLogout: () => void;
 }) {
@@ -237,127 +352,11 @@ function UserMenu({
           <div className="flex flex-col gap-1 md:hidden">
             <div className="my-1" style={{ borderTop: "1px solid var(--border-subtle)" }} />
 
-            {/* View Mode Selector */}
-            <div className="px-2 py-1">
-              <div className="mb-1.5 text-xs" style={{ color: "var(--text-tertiary)", fontWeight: "var(--weight-medium)" }}>VIEW MODE</div>
-              <div
-                className="flex flex-wrap items-center justify-center gap-1 p-0.5"
-                style={{ background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)" }}
-              >
-                {(["tree", "columns", "calendar"] as const).map((mode) => {
-                  const active = view === mode;
-                  const Icon = VIEW_ICONS[mode];
-                  return (
-                    <button
-                      key={mode}
-                      type="button"
-                      title={VIEW_LABELS[mode]}
-                      onClick={() => {
-                        onViewChange(mode);
-                        setOpen(false);
-                      }}
-                      className="flex cursor-pointer items-center justify-center gap-1 whitespace-nowrap border-none px-2 py-1.5 transition-all"
-                      style={{
-                        fontSize: "var(--text-xs)",
-                        fontWeight: active ? "var(--weight-medium)" : "var(--weight-regular)",
-                        borderRadius: "var(--radius-xs)",
-                        background: active ? "var(--surface-raised)" : "transparent",
-                        color: active ? "var(--text-primary)" : "var(--text-secondary)",
-                        boxShadow: active ? "var(--shadow-sm)" : "none",
-                      }}
-                    >
-                      <Icon />
-                      <span className="capitalize">{mode}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Theme Toggle */}
-            <div className="flex items-center justify-between px-2 py-1.5">
-              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Theme</span>
-              <button
-                type="button"
-                onClick={onToggleTheme}
-                className="flex cursor-pointer items-center gap-1.5 border-none px-2 py-1 transition-colors"
-                style={{
-                  fontSize: "var(--text-xs)",
-                  color: "var(--text-primary)",
-                  background: "var(--surface-sunken)",
-                  borderRadius: "var(--radius-sm)",
-                }}
-              >
-                {theme === "light" ? <MoonIcon /> : <SunIcon />}
-                <span>{theme === "light" ? "Dark" : "Light"}</span>
-              </button>
-            </div>
-
-            {/* Zoom Controls */}
-            <div className="flex items-center justify-between px-2 py-1.5">
-              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Zoom</span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={onZoomOut}
-                  className="flex h-6 w-6 cursor-pointer items-center justify-center border-none transition-colors"
-                  style={{
-                    background: "var(--surface-sunken)",
-                    color: "var(--text-primary)",
-                    borderRadius: "var(--radius-xs)",
-                  }}
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  onClick={onResetZoom}
-                  className="flex h-6 px-1.5 cursor-pointer items-center justify-center border-none bg-transparent"
-                  style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}
-                >
-                  {zoom}%
-                </button>
-                <button
-                  type="button"
-                  onClick={onZoomIn}
-                  className="flex h-6 w-6 cursor-pointer items-center justify-center border-none transition-colors"
-                  style={{
-                    background: "var(--surface-sunken)",
-                    color: "var(--text-primary)",
-                    borderRadius: "var(--radius-xs)",
-                  }}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
             {/* Notifications */}
             <div className="flex items-center justify-between px-2 py-1.5">
               <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Notifications</span>
               <NotificationsBell />
             </div>
-
-            {/* Keyboard Shortcuts */}
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onOpenShortcuts();
-              }}
-              className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-2 py-1.5 text-left transition-colors"
-              style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)", borderRadius: "var(--radius-sm)" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-sunken)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <span>Shortcuts</span>
-              <span
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full"
-                style={{ fontSize: "var(--text-2xs)", background: "var(--surface-sunken)", color: "var(--text-tertiary)" }}
-              >
-                ?
-              </span>
-            </button>
           </div>
 
           <div className="my-1" style={{ borderTop: "1px solid var(--border-subtle)" }} />
@@ -390,44 +389,15 @@ function UserMenu({
   );
 }
 
-function ViewSwitch({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
-  return (
-    <div
-      className="flex items-center gap-0.5 p-0.5"
-      style={{ background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)" }}
-    >
-      {(["tree", "columns", "calendar"] as const).map((mode) => {
-        const active = view === mode;
-        const Icon = VIEW_ICONS[mode];
-        return (
-          <button
-            key={mode}
-            type="button"
-            title={VIEW_LABELS[mode]}
-            onClick={() => onChange(mode)}
-            className="flex cursor-pointer items-center justify-center border-none px-2 py-1"
-            style={{
-              fontSize: "var(--text-xs)",
-              fontWeight: active ? "var(--weight-medium)" : "var(--weight-regular)",
-              borderRadius: "var(--radius-xs)",
-              background: active ? "var(--surface-raised)" : "transparent",
-              color: active ? "var(--text-primary)" : "var(--text-secondary)",
-              boxShadow: active ? "var(--shadow-sm)" : "none",
-            }}
-          >
-            <Icon />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function AuthedApp() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const { zoom, zoomIn, zoomOut, reset: resetZoom } = useZoom();
   const [view, setView] = useViewMode();
+  const isMobile = useIsMobile();
+  // Tree and Calendar aren't usable on phone-width screens, so mobile is
+  // locked to Columns regardless of the desktop preference stored in localStorage.
+  const effectiveView: ViewMode = isMobile ? "columns" : view;
   const workspacesQuery = useWorkspaces();
   const [workspaceId, setWorkspaceId] = useCurrentWorkspaceId();
   const createArea = useCreateArea();
@@ -552,23 +522,32 @@ function AuthedApp() {
             },
           ]
         : []),
-      { id: "view-tree", label: "Switch to Tree view", run: () => setView("tree") },
-      { id: "view-columns", label: "Switch to Columns view", run: () => setView("columns") },
-      { id: "view-calendar", label: "Switch to Calendar view", run: () => setView("calendar") },
+      ...(isMobile
+        ? []
+        : [
+            { id: "view-tree", label: "Switch to Tree view", run: () => setView("tree") },
+            { id: "view-columns", label: "Switch to Columns view", run: () => setView("columns") },
+            { id: "view-calendar", label: "Switch to Calendar view", run: () => setView("calendar") },
+          ]),
       { id: "theme", label: theme === "light" ? "Switch to dark theme" : "Switch to light theme", run: toggle },
       { id: "export", label: "Export backup (JSON)", run: () => downloadJson(buildExport(areas, tasks), "todora-backup.json") },
       ...(canEdit ? [{ id: "import", label: "Import backup (JSON)…", run: handleImport }] : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [theme, areas, tasks, activeWorkspaceId, canEdit],
+    [theme, areas, tasks, activeWorkspaceId, canEdit, isMobile],
   );
 
+  // Tree is the only view that supports jumping straight to a task/area, so
+  // on mobile (locked to Columns) a search pick just clears any pending
+  // focus request instead of switching to a view that won't render.
   function pickTask(task: Task) {
+    if (isMobile) return;
     setView("tree");
     setFocusTaskId(task.id);
   }
 
   function pickArea(area: Area) {
+    if (isMobile) return;
     setView("tree");
     setFocusAreaId(area.id);
   }
@@ -576,7 +555,7 @@ function AuthedApp() {
   return (
     <div className="flex h-full w-full flex-col" style={{ background: "var(--surface-content)" }}>
       <header
-        className="flex items-center justify-between gap-2 px-3 py-2 md:grid md:grid-cols-[1fr_auto_1fr] md:gap-3 md:px-4"
+        className="flex items-center justify-between gap-2 px-3 py-2 md:grid md:grid-cols-[minmax(max-content,1fr)_minmax(0,2fr)_minmax(max-content,1fr)] md:gap-3 md:px-4"
         style={{ borderBottom: "1px solid var(--border-default)" }}
       >
         <div className="flex min-w-0 items-center gap-2 justify-self-start">
@@ -595,84 +574,76 @@ function AuthedApp() {
             currentAreaCount={areas.length}
             currentTaskCount={tasks.length}
           />
-          <div className="hidden md:flex">
-            <ViewSwitch view={view} onChange={setView} />
-          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setPaletteOpen(true)}
-          title="Search areas, tasks, or run a command (⌘K)"
-          className="flex h-8 w-full max-w-[42vw] sm:max-w-[30vw] md:max-w-[40vw] cursor-text items-center gap-2 justify-self-center px-2 sm:px-2.5 transition-all"
-          style={{
-            maxWidth: zoom > 100 ? (zoom === 110 ? 280 : 230) : undefined,
-            background: "var(--surface-raised)",
-            border: "1px solid var(--border-default)",
-            borderRadius: "var(--radius-md)",
-            color: "var(--text-tertiary)",
-          }}
-        >
-          <SearchIcon />
-          <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left" style={{ fontSize: "var(--text-sm)" }}>
-            Search…
-          </span>
-          <span
-            className="hidden sm:inline-block shrink-0 px-1.5 py-0.5"
-            style={{
-              fontSize: "var(--text-2xs)",
-              color: "var(--text-secondary)",
-              background: "var(--surface-sunken)",
-              border: "1px solid var(--border-default)",
-              borderRadius: "var(--radius-xs)",
-            }}
-          >
-            ⌘K
-          </span>
-        </button>
-
-        <div className="flex shrink-0 items-center gap-2 justify-self-end">
-          <div className="hidden md:flex">
-            <ZoomControl zoom={zoom} onZoomOut={zoomOut} onZoomIn={zoomIn} onReset={resetZoom} />
-          </div>
+        <div className="flex justify-self-center">
+          {/* Phone-width screens: compact trigger, keeps the header from crowding the workspace switcher */}
           <button
             type="button"
-            onClick={() => setShortcutsOpen(true)}
-            title="Keyboard shortcuts"
-            className="hidden md:inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center"
+            onClick={() => setPaletteOpen(true)}
+            title="Search areas, tasks, or run a command (⌘K)"
+            className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 px-2.5 sm:hidden"
             style={{
-              fontSize: "var(--text-xs)",
-              fontWeight: "var(--weight-semibold)",
-              color: "var(--text-secondary)",
-              background: "var(--surface-sunken)",
+              background: "var(--surface-raised)",
               border: "1px solid var(--border-default)",
-              borderRadius: "var(--radius-full)",
+              borderRadius: "var(--radius-md)",
+              color: "var(--text-tertiary)",
             }}
           >
-            ?
+            <SearchIcon />
+            <span style={{ fontSize: "var(--text-sm)" }}>Search</span>
           </button>
-          <div className="hidden md:inline-flex">
-            <IconButton
-              icon={theme === "light" ? <MoonIcon /> : <SunIcon />}
-              onClick={toggle}
-              title="Toggle theme"
-            />
-          </div>
+
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            title="Search areas, tasks, or run a command (⌘K)"
+            className="hidden h-10 w-full max-w-[45vw] cursor-text items-center gap-2.5 px-3.5 transition-all sm:flex md:max-w-[60vw] lg:max-w-[640px]"
+            style={{
+              background: "var(--surface-raised)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-md)",
+              color: "var(--text-tertiary)",
+            }}
+          >
+            <SearchIcon />
+            <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left" style={{ fontSize: "var(--text-md)" }}>
+              Search areas, tasks, #tags…
+            </span>
+            <span
+              className="inline-block shrink-0 px-1.5 py-0.5"
+              style={{
+                fontSize: "var(--text-2xs)",
+                color: "var(--text-secondary)",
+                background: "var(--surface-sunken)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "var(--radius-xs)",
+              }}
+            >
+              ⌘K
+            </span>
+          </button>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 justify-self-end">
+          <SettingsMenu
+            view={view}
+            onViewChange={setView}
+            isMobile={isMobile}
+            theme={theme}
+            onToggleTheme={toggle}
+            zoom={zoom}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onResetZoom={resetZoom}
+            onOpenShortcuts={() => setShortcutsOpen(true)}
+          />
           <div className="hidden md:inline-flex">
             <NotificationsBell />
           </div>
           {user && (
             <UserMenu
               user={user}
-              view={view}
-              onViewChange={setView}
-              theme={theme}
-              onToggleTheme={toggle}
-              zoom={zoom}
-              onZoomIn={zoomIn}
-              onZoomOut={zoomOut}
-              onResetZoom={resetZoom}
-              onOpenShortcuts={() => setShortcutsOpen(true)}
               onEditProfile={() => setProfileOpen(true)}
               onLogout={logout}
             />
@@ -696,7 +667,7 @@ function AuthedApp() {
           <div className="flex h-full items-center justify-center" style={{ color: "var(--text-tertiary)" }}>
             No workspace selected.
           </div>
-        ) : view === "tree" ? (
+        ) : effectiveView === "tree" ? (
           <TreeView
             areas={areas}
             tasks={tasks}
@@ -708,7 +679,7 @@ function AuthedApp() {
             focusAreaId={focusAreaId}
             onAreaFocusHandled={() => setFocusAreaId(null)}
           />
-        ) : view === "columns" ? (
+        ) : effectiveView === "columns" ? (
           <ColumnViewScreen
             areas={areas}
             tasks={tasks}

@@ -43,6 +43,78 @@ input.outline-none:focus-visible {
   box-shadow: none !important;
 }
 
+/* iOS Safari auto-zooms the page when a focused input's font-size is under 16px.
+   The design system's text scale tops out at 14px, so force 16px on small
+   screens specifically for form fields — !important to beat inline fontSize. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Task title auto-grow, pure CSS (the "invisible mirror" technique): an
+   ::after pseudo-element replicates the typed text with identical font/
+   padding and sits in the same grid cell as the textarea, so the grid track
+   — and the textarea stretched to fill it — always matches the true wrapped
+   height. No scrollHeight measurement, so it can't go stale on any browser. */
+.title-autosize-wrap {
+  display: grid;
+  /* Flex items that are scroll containers (overflow != visible) get an
+     automatic minimum size of 0, so the inspector panel's flex-col was free
+     to crush this down to ~2px once its stacked fields overflowed a phone's
+     short viewport — an authored min-height (not "auto") is what stops that. */
+  flex-shrink: 0;
+  min-height: 40px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+.title-autosize-wrap::after {
+  content: attr(data-replicated-value);
+  visibility: hidden;
+}
+.title-autosize-wrap::after,
+.title-autosize-wrap > textarea {
+  grid-area: 1 / 1 / 2 / 2;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+  padding: 8px 10px;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.title-autosize-wrap > textarea {
+  resize: none;
+  overflow: hidden;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  width: 100%;
+}
+@media (max-width: 640px) {
+  /* Keep the invisible mirror in lockstep with the 16px anti-zoom bump below. */
+  .title-autosize-wrap::after,
+  .title-autosize-wrap > textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Task notes: the JS auto-grow logic already raises the floor on mobile, but
+   this CSS backstop guarantees it — immune to any JS/matchMedia hydration
+   timing so it can't render small on first paint. */
+@media (max-width: 767px) {
+  .notes-textarea {
+    min-height: 40vh !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

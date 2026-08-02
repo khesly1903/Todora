@@ -172,11 +172,10 @@ import {
   PlusIcon,
   StatusDot,
 } from "./primitives";
-import { isOverdue, taskMatchesQuery } from "../utils";
+import { isOverdue } from "../utils";
 import { ROOT_DROP_ID, resolveDragEnd, type DropPosition } from "../dnd";
 import { DeleteConfirmDialog } from "./Dialog";
 import { TaskInspector } from "./TaskInspector";
-import { SearchResults } from "./SearchResults";
 import { AddTaskBar, type CreateTaskInput } from "./AddTaskBar";
 
 type AddingArea = { parentId: string | null };
@@ -244,7 +243,6 @@ export function TreeView({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [renamingAreaId, setRenamingAreaId] = useState<string | null>(null);
   const [adding, setAdding] = useState<AddingArea | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AreaNode | null>(null);
@@ -260,21 +258,6 @@ export function TreeView({
   const undo = useUndo();
 
   const selectedTask = selectedTaskId ? (tasks.find((t) => t.id === selectedTaskId) ?? null) : null;
-
-  const query = search.trim().toLowerCase();
-  const areaMatches = query ? areas.filter((a) => a.name.toLowerCase().includes(query)) : [];
-  const matches = query ? tasks.filter((t) => taskMatchesQuery(t, query)) : [];
-
-  function openTaskFromSearch(task: Task) {
-    openArea(task.areaId);
-    setSelectedTaskId(task.id);
-    setSearch("");
-  }
-
-  function openAreaFromSearch(area: Area) {
-    openArea(area.id);
-    setSearch("");
-  }
 
   function selectArea(id: string) {
     setSelectedId(id);
@@ -445,40 +428,6 @@ export function TreeView({
         className="flex h-full w-[240px] max-[720px]:w-[190px] shrink-0 flex-col overflow-y-auto px-1.5 py-2"
         style={{ background: "var(--surface-sidebar)", borderRight: "1px solid var(--border-default)" }}
       >
-        <div className="mb-1.5 px-1">
-          <input
-            value={search}
-            placeholder="Search areas, tasks, #tags…"
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setSearch("");
-              else if (e.key === "Enter") {
-                if (areaMatches[0]) openAreaFromSearch(areaMatches[0]);
-                else if (matches[0]) openTaskFromSearch(matches[0]);
-              }
-            }}
-            className="w-full px-2 py-1 outline-none"
-            style={{
-              fontFamily: "var(--font-sans)",
-              fontSize: "var(--text-sm)",
-              color: "var(--text-primary)",
-              background: "var(--surface-raised)",
-              border: "1px solid var(--border-default)",
-              borderRadius: "var(--radius-sm)",
-            }}
-          />
-        </div>
-
-        {query ? (
-          <SearchResults
-            roots={roots}
-            areaMatches={areaMatches}
-            matches={matches}
-            onPickArea={openAreaFromSearch}
-            onPick={openTaskFromSearch}
-          />
-        ) : (
-          <>
         <AreasHeader
           onAddRoot={() => setAdding({ parentId: null })}
           canEdit={canEdit}
@@ -542,8 +491,6 @@ export function TreeView({
           <div className="mt-2 px-2" style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>
             No areas yet.
           </div>
-        )}
-          </>
         )}
       </div>
 

@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import type { Workspace } from "../types";
-import { useCreateWorkspace, useDeleteWorkspace, useRenameWorkspace } from "../hooks";
+import { useCreateWorkspace, useDeleteWorkspace, useIsMobile, useRenameWorkspace } from "../hooks";
 import { InlineInput, PlusIcon } from "./primitives";
 import { DeleteConfirmDialog } from "./Dialog";
 import { MembersDialog } from "./MembersDialog";
 import { pushToast } from "../toast";
+
+function WorkspaceIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 21 7 12 12 3 7 12 2" />
+      <polyline points="3 12 12 17 21 12" />
+      <polyline points="3 17 12 22 21 17" />
+    </svg>
+  );
+}
 
 function CheckIcon() {
   return (
@@ -71,6 +81,7 @@ export function WorkspaceSwitcher({
   currentAreaCount: number;
   currentTaskCount: number;
 }) {
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -137,33 +148,50 @@ export function WorkspaceSwitcher({
 
   return (
     <div ref={ref} className="relative min-w-0 shrink">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        title="Switch workspace"
-        className="flex h-8 min-w-0 max-w-[220px] cursor-pointer items-center gap-1.5 px-2.5"
-        style={{
-          background: "var(--surface-raised)",
-          border: "1px solid var(--border-default)",
-          borderRadius: "var(--radius-md)",
-          color: "var(--text-primary)",
-        }}
-      >
-        <span
-          className="min-w-0 truncate"
-          style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)" }}
+      {isMobile ? (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          title={current ? `Workspace: ${current.name}` : "Switch workspace"}
+          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center"
+          style={{
+            background: "var(--surface-raised)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--text-primary)",
+          }}
         >
-          {current?.name ?? "Workspace"}
-        </span>
-        {current && current.role !== "OWNER" && (
-          <span style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
-            {ROLE_BADGE_LABEL[current.role]}
+          <WorkspaceIcon />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          title="Switch workspace"
+          className="flex h-8 min-w-0 max-w-[220px] cursor-pointer items-center gap-1.5 px-2.5"
+          style={{
+            background: "var(--surface-raised)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--text-primary)",
+          }}
+        >
+          <span
+            className="min-w-0 truncate"
+            style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)" }}
+          >
+            {current?.name ?? "Workspace"}
           </span>
-        )}
-        <span style={{ color: "var(--text-tertiary)" }}>
-          <ChevronDown />
-        </span>
-      </button>
+          {current && current.role !== "OWNER" && (
+            <span style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}>
+              {ROLE_BADGE_LABEL[current.role]}
+            </span>
+          )}
+          <span style={{ color: "var(--text-tertiary)" }}>
+            <ChevronDown />
+          </span>
+        </button>
+      )}
 
       {open && (
         <div

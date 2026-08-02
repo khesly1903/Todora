@@ -4,6 +4,12 @@ import { PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_ORDER, STATUS_LABELS } from 
 import type { TaskUpdate } from "../api";
 import { Avatar, StatusDot } from "./primitives";
 import { DatePicker } from "./DatePicker";
+import { useIsMobile } from "../hooks";
+
+// On mobile the inspector opens fullscreen, so the notes field gets a much
+// taller floor than on desktop's compact side panel — otherwise it looks
+// cramped in all that extra vertical space.
+const NOTES_MIN_HEIGHT = { mobile: 200, desktop: 72 };
 
 const STATUS_ORDER: TaskStatus[] = ["NOT_STARTED", "COOKING", "DONE"];
 
@@ -50,6 +56,8 @@ export function TaskInspector({
   const [tagDraft, setTagDraft] = useState("");
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const isMobile = useIsMobile();
+  const notesMinHeight = isMobile ? NOTES_MIN_HEIGHT.mobile : NOTES_MIN_HEIGHT.desktop;
 
   function commitDescription() {
     const next = description.trim() === "" ? null : description;
@@ -79,23 +87,35 @@ export function TaskInspector({
     }
   }
 
-  // Auto-grow the title textarea up to 180px, with scroll enabled above that.
-  useLayoutEffect(() => {
-    const el = titleRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const newHeight = Math.min(el.scrollHeight, 180);
-    el.style.height = `${newHeight}px`;
-  }, [title]);
+  // Title height is handled by pure CSS (see .title-autosize-wrap) — a
+  // JS/scrollHeight approach proved unreliable on mobile Safari.
 
   // Auto-grow the notes textarea up to 320px, with scroll enabled above that.
   useLayoutEffect(() => {
     const el = notesRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    const newHeight = Math.min(Math.max(el.scrollHeight, 72), 320);
-    el.style.height = `${newHeight}px`;
-  }, [description]);
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(Math.max(el.scrollHeight, notesMinHeight), 320)}px`;
+    };
+    fit();
+    const raf = requestAnimationFrame(fit);
+    return () => cancelAnimationFrame(raf);
+  }, [description, notesMinHeight]);
+
+  // Re-fit notes once web fonts finish loading — a font swap after the initial
+  // measurement can change line-wrapping without triggering a re-render.
+  useLayoutEffect(() => {
+    const fonts = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
+    if (!fonts?.ready) return;
+    fonts.ready.then(() => {
+      const el = notesRef.current;
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = `${Math.min(Math.max(el.scrollHeight, notesMinHeight), 320)}px`;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // On open, place the caret at the end of the task text rather than the start.
   useLayoutEffect(() => {
@@ -138,37 +158,30 @@ export function TaskInspector({
         </button>
       </div>
 
-      {/* Title — open in an editable textarea that auto-fits the task's content */}
-      <textarea
-        ref={titleRef}
-        autoFocus
-        readOnly={!canEdit}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={commitTitle}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            e.currentTarget.blur();
-          }
-          if (e.key === "Escape") {
-            setTitle(task.title);
-            e.currentTarget.blur();
-          }
-        }}
-        rows={1}
-        className="w-full resize-none overflow-y-auto px-2.5 py-2 outline-none"
-        style={{
-          fontSize: "var(--text-md)",
-          fontWeight: "var(--weight-medium)",
-          lineHeight: "var(--leading-normal)",
-          color: "var(--text-primary)",
-          background: "var(--surface-raised)",
-          border: "1px solid var(--border-default)",
-          borderRadius: "var(--radius-sm)",
-          maxHeight: "180px",
-        }}
-      />
+      {/* Title — a CSS grid mirror (see .title-autosize-wrap) grows the box to
+          fit the text; a plain textarea, background, and outline none are set
+          via CSS so the invisible ::after mirror keeps identical metrics. */}
+      <div className="title-autosize-wrap" data-replicated-value={`${title} `}>
+        <textarea
+          ref={titleRef}
+          autoFocus={!isMobile}
+          readOnly={!canEdit}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={commitTitle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+            if (e.key === "Escape") {
+              setTitle(task.title);
+              e.currentTarget.blur();
+            }
+          }}
+          rows={1}
+        />
+      </div>
 
       {/* Status */}
       <div className="flex flex-col gap-1.5">
@@ -311,7 +324,7 @@ export function TaskInspector({
           onChange={(e) => setDescription(e.target.value)}
           onBlur={commitDescription}
           rows={3}
-          className="w-full resize-none overflow-y-auto px-2 py-1.5 outline-none"
+          className="notes-textarea w-full resize-none overflow-x-hidden overflow-y-auto px-2 py-1.5 outline-none"
           style={{
             fontFamily: "var(--font-sans)",
             fontSize: "var(--text-sm)",
@@ -320,8 +333,10 @@ export function TaskInspector({
             background: "var(--surface-raised)",
             border: "1px solid var(--border-default)",
             borderRadius: "var(--radius-sm)",
-            minHeight: "72px",
+            minHeight: `${notesMinHeight}px`,
             maxHeight: "320px",
+            whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
           }}
         />
       </div>

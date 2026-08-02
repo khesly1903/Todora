@@ -26,9 +26,7 @@ import { AddTaskBar } from "./AddTaskBar";
 import { BackIcon, Breadcrumb } from "./primitives";
 import { DeleteConfirmDialog } from "./Dialog";
 import { TaskInspector } from "./TaskInspector";
-import { SearchResults } from "./SearchResults";
 import type { Area, Task } from "../types";
-import { taskMatchesQuery } from "../utils";
 
 interface ColumnModel {
   parent: AreaNode | null; // null = root column; otherwise the area whose children/tasks are shown
@@ -75,7 +73,6 @@ export function ColumnViewScreen({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AreaNode | null>(null);
 
   const roots = useMemo(() => buildTree(areas), [areas]);
@@ -131,24 +128,6 @@ export function ColumnViewScreen({
   const deepestId = validSelection.at(-1);
   const path = deepestId ? (findPath(roots, deepestId) ?? []) : [];
   const selectedTask = selectedTaskId ? (tasks.find((t) => t.id === selectedTaskId) ?? null) : null;
-
-  const query = search.trim().toLowerCase();
-  const areaMatches = query ? areas.filter((a) => a.name.toLowerCase().includes(query)) : [];
-  const matches = query ? tasks.filter((t) => taskMatchesQuery(t, query)) : [];
-
-  function openTaskFromSearch(task: Task) {
-    const chain = findPath(roots, task.areaId) ?? [];
-    setSelection(chain.map((n) => n.id));
-    setSelectedTaskId(task.id);
-    setSearch("");
-  }
-
-  function openAreaFromSearch(area: Area) {
-    const chain = findPath(roots, area.id) ?? [];
-    setSelection(chain.map((n) => n.id));
-    setSelectedTaskId(null);
-    setSearch("");
-  }
 
   // Sliding window: only render the deepest `maxColumns` columns; older ones live in the breadcrumb.
   // On mobile there's only room for one pane, so it always shows just the deepest column —
@@ -226,27 +205,6 @@ export function ColumnViewScreen({
           </nav>
         )}
         <div className={isMobile ? "flex min-w-0 flex-1 items-center justify-end gap-2" : "flex shrink-0 items-center gap-2"}>
-        <input
-          value={search}
-          placeholder="Search areas, tasks, #tags…"
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setSearch("");
-            else if (e.key === "Enter") {
-              if (areaMatches[0]) openAreaFromSearch(areaMatches[0]);
-              else if (matches[0]) openTaskFromSearch(matches[0]);
-            }
-          }}
-          className={isMobile ? "min-w-0 flex-1 px-2 py-1 outline-none" : "w-[170px] shrink-0 px-2 py-1 outline-none"}
-          style={{
-            fontFamily: "var(--font-sans)",
-            fontSize: "var(--text-sm)",
-            color: "var(--text-primary)",
-            background: "var(--surface-raised)",
-            border: "1px solid var(--border-default)",
-            borderRadius: "var(--radius-sm)",
-          }}
-        />
         {!isMobile && (
         <div
           className="flex shrink-0 items-center gap-0.5 p-0.5"
@@ -279,17 +237,6 @@ export function ColumnViewScreen({
         </div>
       </div>
 
-      {query ? (
-        <div className="flex-1 overflow-y-auto px-2 py-2">
-          <SearchResults
-            roots={roots}
-            areaMatches={areaMatches}
-            matches={matches}
-            onPickArea={openAreaFromSearch}
-            onPick={openTaskFromSearch}
-          />
-        </div>
-      ) : (
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="flex flex-1 overflow-hidden">
         {visibleColumns.map((col, i) => {
@@ -400,7 +347,6 @@ export function ColumnViewScreen({
         )}
       </div>
       </DndContext>
-      )}
 
       <DeleteConfirmDialog
         open={deleteTarget !== null}
