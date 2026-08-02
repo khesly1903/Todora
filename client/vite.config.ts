@@ -10,6 +10,6 @@ export default defineConfig({
     },
   },
   preview: {
-    allowedHosts: ["todora.xyz", "www.todora.xyz"],
+    allowedHosts: ["todora.xyz", "www.todora.xyz", "app.todora.xyz"],
   },
 });
