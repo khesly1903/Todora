@@ -5,6 +5,7 @@ import { useAuth } from "./auth";
 import { TreeView } from "./components/TreeView";
 import { ColumnViewScreen } from "./components/ColumnViewScreen";
 import { CalendarView } from "./components/CalendarView";
+import { ListView } from "./components/ListView";
 import { CommandPalette, type Command } from "./components/CommandPalette";
 import { ShortcutsHelp } from "./components/ShortcutsHelp";
 import { ProfileDialog } from "./components/ProfileDialog";
@@ -21,12 +22,13 @@ import type { Area, Task, User } from "./types";
 import { canEditRole } from "./types";
 
 type Theme = "light" | "dark";
-type ViewMode = "tree" | "columns" | "calendar";
+type ViewMode = "tree" | "columns" | "calendar" | "list";
 
 const VIEW_LABELS: Record<ViewMode, string> = {
   tree: "Tree",
   columns: "Columns",
   calendar: "Calendar",
+  list: "List",
 };
 
 function TreeViewIcon() {
@@ -54,10 +56,24 @@ function CalendarViewIcon() {
   );
 }
 
+function ListViewIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  );
+}
+
 const VIEW_ICONS: Record<ViewMode, () => JSX.Element> = {
   tree: TreeViewIcon,
   columns: ColumnsViewIcon,
   calendar: CalendarViewIcon,
+  list: ListViewIcon,
 };
 
 const ZOOM_STEPS = [80, 90, 100, 110, 120];
@@ -176,7 +192,7 @@ function SettingsMenu({
                 className="flex flex-col gap-1 p-0.5"
                 style={{ background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)" }}
               >
-                {(["tree", "columns", "calendar"] as const).map((mode) => {
+                {(["tree", "columns", "calendar", "list"] as const).map((mode) => {
                   const active = view === mode;
                   const Icon = VIEW_ICONS[mode];
                   return (
@@ -528,6 +544,7 @@ function AuthedApp() {
             { id: "view-tree", label: "Switch to Tree view", run: () => setView("tree") },
             { id: "view-columns", label: "Switch to Columns view", run: () => setView("columns") },
             { id: "view-calendar", label: "Switch to Calendar view", run: () => setView("calendar") },
+            { id: "view-list", label: "Switch to List view", run: () => setView("list") },
           ]),
       { id: "theme", label: theme === "light" ? "Switch to dark theme" : "Switch to light theme", run: toggle },
       { id: "export", label: "Export backup (JSON)", run: () => downloadJson(buildExport(areas, tasks), "todora-backup.json") },
@@ -686,6 +703,18 @@ function AuthedApp() {
             workspaceId={activeWorkspaceId}
             canEdit={canEdit}
             showAvatars={showAvatars}
+          />
+        ) : effectiveView === "list" ? (
+          <ListView
+            areas={areas}
+            tasks={tasks}
+            workspaceId={activeWorkspaceId}
+            canEdit={canEdit}
+            showAvatars={showAvatars}
+            focusTaskId={focusTaskId}
+            onFocusHandled={() => setFocusTaskId(null)}
+            focusAreaId={focusAreaId}
+            onAreaFocusHandled={() => setFocusAreaId(null)}
           />
         ) : (
           <CalendarView areas={areas} tasks={tasks} canEdit={canEdit} />

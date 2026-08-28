@@ -208,7 +208,6 @@ export function TaskColumnItem({
         style={{
           fontSize: "var(--text-sm)",
           color: done ? "var(--text-tertiary)" : selected ? "var(--accent-10)" : "var(--text-primary)",
-          textDecoration: done ? "line-through" : "none",
           opacity: done ? 0.7 : 1,
           transition: "opacity var(--duration-normal) var(--ease-standard)",
         }}

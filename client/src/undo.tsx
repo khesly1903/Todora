@@ -43,6 +43,8 @@ export function UndoProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const commitRef = useRef<(() => void) | null>(null);
+  const prevAreasRef = useRef<any>(null);
+  const prevTasksRef = useRef<any>(null);
 
   function clearTimer() {
     if (timerRef.current !== null) {
@@ -56,12 +58,19 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     clearTimer();
     const commit = commitRef.current;
     commitRef.current = null;
+    prevAreasRef.current = null;
+    prevTasksRef.current = null;
     setMessage(null);
     commit?.();
   }
 
   function schedule(msg: string, optimisticRemove: () => void, commit: () => void) {
     flush(); // only one pending delete at a time
+    
+    // Save current state for synchronous undo
+    prevAreasRef.current = qc.getQueriesData({ queryKey: ["areas"] });
+    prevTasksRef.current = qc.getQueriesData({ queryKey: ["tasks"] });
+    
     optimisticRemove();
     commitRef.current = commit;
     setMessage(msg);
@@ -69,6 +78,8 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       timerRef.current = null;
       const c = commitRef.current;
       commitRef.current = null;
+      prevAreasRef.current = null;
+      prevTasksRef.current = null;
       setMessage(null);
       c?.();
     }, UNDO_MS);
@@ -78,9 +89,21 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     clearTimer();
     commitRef.current = null;
     setMessage(null);
-    // Server still has the data (we deferred the delete) — refetch to restore.
-    qc.invalidateQueries({ queryKey: ["areas"] });
-    qc.invalidateQueries({ queryKey: ["tasks"] });
+    
+    // Synchronously restore state
+    if (prevAreasRef.current) {
+      for (const [key, val] of prevAreasRef.current) {
+        qc.setQueryData(key, val);
+      }
+    }
+    if (prevTasksRef.current) {
+      for (const [key, val] of prevTasksRef.current) {
+        qc.setQueryData(key, val);
+      }
+    }
+    
+    prevAreasRef.current = null;
+    prevTasksRef.current = null;
   }
 
   const value: UndoContextValue = {
@@ -88,6 +111,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       schedule(
         `Deleted “${task.title}”`,
         () => {
+          qc.cancelQueries({ queryKey: ["tasks"] });
           qc.setQueriesData<Task[]>({ queryKey: ["tasks"] }, (ts) => ts?.filter((t) => t.id !== task.id));
         },
         () => {
@@ -98,6 +122,8 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       schedule(
         `Deleted “${area.name}”`,
         () => {
+          qc.cancelQueries({ queryKey: ["areas"] });
+          qc.cancelQueries({ queryKey: ["tasks"] });
           const areaQueries = qc.getQueriesData<Area[]>({ queryKey: ["areas"] });
           const areas = areaQueries[0]?.[1] ?? [];
           const ids = subtreeIds(areas, area.id);

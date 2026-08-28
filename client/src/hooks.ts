@@ -243,8 +243,7 @@ export function useApplyDragAction() {
   const reorderTasks = useReorderTasks();
   const updateTask = useUpdateTask();
   const reorderAreas = useReorderAreas();
-  const moveArea = useUpdateArea();
-  return (action: DragAction | null, onExpand?: (id: string) => void) => {
+  return (action: DragAction | null) => {
     if (!action) return;
     switch (action.type) {
       case "reorder-tasks":
@@ -256,11 +255,6 @@ export function useApplyDragAction() {
         break;
       case "reorder-areas":
         reorderAreas.mutate(action.orderedIds);
-        break;
-      case "move-area":
-        moveArea.mutate({ id: action.areaId, parentId: action.parentId });
-        reorderAreas.mutate(action.orderedIds);
-        if (action.expandId) onExpand?.(action.expandId);
         break;
     }
   };

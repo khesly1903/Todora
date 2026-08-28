@@ -174,9 +174,10 @@ import { AddTaskBar, type CreateTaskInput } from "./AddTaskBar";
 
 type AddingArea = { parentId: string | null };
 
-export function TreeView({
-  areas,
+/** Current pointer Y, derived from the drag's start event plus how far it has moved since. */
 
+export function ListView({
+  areas,
   tasks,
   workspaceId,
   canEdit,
@@ -461,11 +462,8 @@ export function TreeView({
               });
             }}
             counts={countSubtree(selectedNode, tasksByArea)}
-            tasks={tasksByArea.get(selectedNode.id) ?? []}
             showAvatars={showAvatars}
-            childAreas={selectedNode.children}
             tasksByArea={tasksByArea}
-            onOpenArea={openArea}
             selectedTaskId={selectedTaskId}
             onSelectTask={setSelectedTaskId}
             editingTaskId={editingTaskId}
@@ -539,24 +537,6 @@ interface BranchProps {
   onSubmitNewArea: (name: string) => void;
 }
 
-
-function EmptyView() {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center text-center p-8">
-      <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-[var(--surface-raised)]" style={{ border: "1px solid var(--border-default)", boxShadow: "var(--shadow-sm)" }}>
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-          <path d="M3 9h18M9 21V9" />
-        </svg>
-      </div>
-      <h2 className="mb-2 text-xl font-semibold" style={{ color: "var(--text-primary)" }}>Ready to focus?</h2>
-      <p className="max-w-[300px]" style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", lineHeight: "1.5" }}>
-        Select an area from the sidebar to view its tasks, or press <kbd style={{ padding: "2px 6px", background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", borderRadius: "4px", fontSize: "11px", fontFamily: "monospace", color: "var(--text-primary)" }}>⌘K</kbd> to jump anywhere.
-      </p>
-    </div>
-  );
-}
-
 function AreaBranch(props: BranchProps) {
   const { node, depth, expanded, selectedId, renamingAreaId, adding, tasksByArea, canEdit } = props;
   const [hover, setHover] = useState(false);
@@ -625,15 +605,7 @@ function AreaBranch(props: BranchProps) {
             {node.name}
           </span>
         )}
-        {!renaming && counts.total - counts.done > 0 && (
-          <span
-            title="Unfinished tasks"
-            style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}
-          >
-            {counts.total - counts.done}
-          </span>
-        )}
-        {!renaming && hover && canEdit && (
+        {!renaming && hover && canEdit ? (
           <button
             type="button"
             title="New sub-area"
@@ -646,7 +618,14 @@ function AreaBranch(props: BranchProps) {
           >
             <PlusIcon />
           </button>
-        )}
+        ) : !renaming && counts.total - counts.done > 0 ? (
+          <span
+            title="Unfinished tasks"
+            style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}
+          >
+            {counts.total - counts.done}
+          </span>
+        ) : null}
       </div>
 
       {isExpanded && (
@@ -735,17 +714,132 @@ function SidebarTaskRow({
   );
 }
 
+
+function EmptyView() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center text-center p-8">
+      <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-[var(--surface-raised)]" style={{ border: "1px solid var(--border-default)", boxShadow: "var(--shadow-sm)" }}>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <path d="M3 9h18M9 21V9" />
+        </svg>
+      </div>
+      <h2 className="mb-2 text-xl font-semibold" style={{ color: "var(--text-primary)" }}>Ready to focus?</h2>
+      <p className="max-w-[300px]" style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", lineHeight: "1.5" }}>
+        Select an area from the sidebar to view its tasks, or press <kbd style={{ padding: "2px 6px", background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", borderRadius: "4px", fontSize: "11px", fontFamily: "monospace", color: "var(--text-primary)" }}>⌘K</kbd> to jump anywhere.
+      </p>
+    </div>
+  );
+}
+
+function ListAreaSection({
+  node,
+  depth,
+  tasksByArea,
+  selectedTaskId,
+  onSelectTask,
+  editingTaskId,
+  onSetEditingTask,
+  onCycleStatus,
+  onRenameTask,
+  onDeleteTask,
+  canEdit,
+  showAvatars
+}: {
+  node: AreaNode;
+  depth: number;
+  tasksByArea: Map<string, Task[]>;
+  selectedTaskId: string | null;
+  onSelectTask: (id: string) => void;
+  editingTaskId: string | null;
+  onSetEditingTask: (id: string | null) => void;
+  onCycleStatus: (task: Task) => void;
+  onRenameTask: (id: string, title: string) => void;
+  onDeleteTask: (task: Task) => void;
+  canEdit: boolean;
+  showAvatars: boolean;
+}) {
+  const counts = countSubtree(node, tasksByArea);
+  if (counts.total - counts.done === 0) return null;
+
+  const tasks = tasksByArea.get(node.id) ?? [];
+  const { active } = splitActiveAndCompleted(tasks);
+  
+  return (
+    <div className="mb-4">
+      <h3
+        className="mb-2 font-semibold"
+        style={{
+          fontSize: depth === 0 ? "var(--text-lg)" : depth === 1 ? "var(--text-md)" : "var(--text-sm)",
+          color: "var(--text-primary)",
+          borderBottom: depth === 0 ? "1px solid var(--border-default)" : "none",
+          paddingBottom: depth === 0 ? "4px" : "0",
+          marginTop: depth > 0 ? "16px" : "0"
+        }}
+      >
+        {node.name}
+      </h3>
+      
+      {active.length > 0 && (
+        <SortableList ids={active.map((t) => t.id)}>
+          {active.map((task) => (
+            <SortableTaskRow
+              key={task.id}
+              task={task}
+              selected={selectedTaskId === task.id}
+              editing={editingTaskId === task.id}
+              canEdit={canEdit}
+              showAvatar={showAvatars}
+              onSelect={() => onSelectTask(task.id)}
+              onCycleStatus={() => onCycleStatus(task)}
+              onStartEdit={() => onSetEditingTask(task.id)}
+              onSubmitEdit={(title) => {
+                onSetEditingTask(null);
+                const trimmed = title.trim();
+                if (trimmed && trimmed !== task.title) onRenameTask(task.id, trimmed);
+              }}
+              onCancelEdit={() => onSetEditingTask(null)}
+              onDelete={() => onDeleteTask(task)}
+            />
+          ))}
+        </SortableList>
+      )}
+      
+
+
+      {node.children.length > 0 && (
+        <div className="pl-4 mt-2" style={{ borderLeft: "1px solid var(--border-default)" }}>
+          {node.children.map(child => (
+            <ListAreaSection
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              tasksByArea={tasksByArea}
+              selectedTaskId={selectedTaskId}
+              onSelectTask={onSelectTask}
+              editingTaskId={editingTaskId}
+              onSetEditingTask={onSetEditingTask}
+              onCycleStatus={onCycleStatus}
+              onRenameTask={onRenameTask}
+              onDeleteTask={onDeleteTask}
+              canEdit={canEdit}
+              showAvatars={showAvatars}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TaskPanel({
   node,
   path,
   canEdit,
   onNavigate,
   counts,
-  tasks,
   showAvatars,
-  childAreas,
   tasksByArea,
-  onOpenArea,
   selectedTaskId,
   onSelectTask,
   editingTaskId,
@@ -762,11 +856,8 @@ function TaskPanel({
   canEdit: boolean;
   onNavigate: (index: number) => void;
   counts: { done: number; total: number };
-  tasks: Task[];
   showAvatars: boolean;
-  childAreas: AreaNode[];
   tasksByArea: Map<string, Task[]>;
-  onOpenArea: (id: string) => void;
   selectedTaskId: string | null;
   onSelectTask: (id: string) => void;
   editingTaskId: string | null;
@@ -778,12 +869,8 @@ function TaskPanel({
   onDeleteArea: () => void;
   onAddChildArea: () => void;
 }) {
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [completedExpanded, setCompletedExpanded] = useState(true);
   const [clampThree, setClampThree] = useTaskLineClamp();
-  const setEditingTaskId = onSetEditingTask;
 
-  const { active, completed } = splitActiveAndCompleted(tasks);
 
   return (
     <>
@@ -842,107 +929,29 @@ function TaskPanel({
         )}
       </div>
 
-      {/* Task list */}
-      <div className="flex-1 overflow-y-auto px-3 py-2.5">
-        {childAreas.map((child) => (
-          <SubAreaRow key={child.id} node={child} tasksByArea={tasksByArea} onOpen={() => onOpenArea(child.id)} />
-        ))}
-        <SortableList ids={active.map((t) => t.id)}>
-          {active.map((task) => (
-            <SortableTaskRow
-              key={task.id}
-              task={task}
-              selected={selectedTaskId === task.id}
-              editing={editingTaskId === task.id}
-              canEdit={canEdit}
-              showAvatar={showAvatars}
-              onSelect={() => onSelectTask(task.id)}
-              onCycleStatus={() => onCycleStatus(task)}
-              onStartEdit={() => setEditingTaskId(task.id)}
-              onSubmitEdit={(title) => {
-                setEditingTaskId(null);
-                const trimmed = title.trim();
-                if (trimmed && trimmed !== task.title) onRenameTask(task.id, trimmed);
-              }}
-              onCancelEdit={() => setEditingTaskId(null)}
-              onDelete={() => onDeleteTask(task)}
-            />
-          ))}
-        </SortableList>
-        {active.length === 0 && childAreas.length === 0 && (
-          <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)", padding: "12px 8px" }}>
-            No open tasks — add one above.
-          </div>
-        )}
-
-        {completed.length > 0 &&
-          (!showCompleted ? (
-            <div className="mt-1 flex items-center justify-between px-2 py-2">
-              <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>
-                {completed.length} completed task{completed.length === 1 ? "" : "s"} hidden
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowCompleted(true)}
-                className="cursor-pointer border-none bg-transparent p-0"
-                style={{ fontSize: "var(--text-xs)", color: "var(--accent-9)" }}
-              >
-                Show completed
-              </button>
-            </div>
-          ) : (
-            <div className="mt-1">
-              <div
-                onClick={() => setCompletedExpanded((v) => !v)}
-                className="flex cursor-default items-center gap-1.5 px-2 py-1.5"
-              >
-                <ChevronToggle expanded={completedExpanded} />
-                <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--weight-semibold)", color: "var(--text-secondary)" }}>
-                  Completed ({completed.length})
-                </span>
-                <span className="flex-1" />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCompleted(false);
-                  }}
-                  className="cursor-pointer border-none bg-transparent p-0"
-                  style={{ fontSize: "var(--text-2xs)", color: "var(--text-tertiary)" }}
-                >
-                  Hide
-                </button>
-              </div>
-              {completedExpanded &&
-                completed.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    selected={selectedTaskId === task.id}
-                    editing={editingTaskId === task.id}
-                    canEdit={canEdit}
-                    showAvatar={showAvatars}
-                    onSelect={() => onSelectTask(task.id)}
-                    onCycleStatus={() => onCycleStatus(task)}
-                    onStartEdit={() => setEditingTaskId(task.id)}
-                    onSubmitEdit={(title) => {
-                      setEditingTaskId(null);
-                      const trimmed = title.trim();
-                      if (trimmed && trimmed !== task.title) onRenameTask(task.id, trimmed);
-                    }}
-                    onCancelEdit={() => setEditingTaskId(null)}
-                    onDelete={() => onDeleteTask(task)}
-                  />
-                ))}
-            </div>
-          ))}
+      {/* Task list - Recursive Render */}
+      <div className="flex-1 overflow-y-auto px-5 py-5">
+        <ListAreaSection
+          node={node}
+          depth={0}
+          tasksByArea={tasksByArea}
+          selectedTaskId={selectedTaskId}
+          onSelectTask={onSelectTask}
+          editingTaskId={editingTaskId}
+          onSetEditingTask={onSetEditingTask}
+          onCycleStatus={onCycleStatus}
+          onRenameTask={onRenameTask}
+          onDeleteTask={onDeleteTask}
+          canEdit={canEdit}
+          showAvatars={showAvatars}
+        />
       </div>
       <span className="sr-only">{node.name}</span>
     </>
   );
 }
 
-function SubAreaRow({
+export function SubAreaRow({
   node,
   tasksByArea,
   onOpen,

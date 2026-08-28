@@ -176,7 +176,7 @@ export function TaskInspector({
             }
             if (e.key === "Escape") {
               setTitle(task.title);
-              e.currentTarget.blur();
+              onClose();
             }
           }}
           rows={1}
@@ -323,6 +323,12 @@ export function TaskInspector({
           readOnly={!canEdit}
           onChange={(e) => setDescription(e.target.value)}
           onBlur={commitDescription}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              commitDescription();
+              onClose();
+            }
+          }}
           rows={3}
           className="notes-textarea w-full resize-none overflow-x-hidden overflow-y-auto px-2 py-1.5 outline-none"
           style={{
